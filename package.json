@@ -19,5 +19,9 @@
   "homepage": "https://github.com/NavpreetDevpuri/mongoose-sort-encrypted-field#readme",
   "dependencies": {
     "@navpreetdevpuri/base-2-n": "0.0.9"
+  },
+  "devDependencies": {
+    "@types/node": "^18.15.3",
+    "typescript": "^5.0.2"
   }
 }
