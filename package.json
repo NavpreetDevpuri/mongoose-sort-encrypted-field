@@ -1,0 +1,23 @@
+{
+  "name": "mongoose-sort-encrypted-field",
+  "version": "0.0.1",
+  "description": "Mongoose plugin to enable sorting on encrypted fields",
+  "main": "index.js",
+  "scripts": {
+    "build": "npx tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NavpreetDevpuri/mongoose-sort-encrypted-field.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/NavpreetDevpuri/mongoose-sort-encrypted-field/issues"
+  },
+  "homepage": "https://github.com/NavpreetDevpuri/mongoose-sort-encrypted-field#readme",
+  "dependencies": {
+    "@navpreetdevpuri/base-2-n": "0.0.9"
+  }
+}
