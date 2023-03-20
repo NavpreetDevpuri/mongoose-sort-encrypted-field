@@ -10,7 +10,7 @@ npm i mongoose-sort-encrypted-field
 
 # Example
 
-We are having user with encrypted email
+We are having user with encrypted email, We just need to add `sortFieldName` option to that field
 
 ```javascript
 const { encrypt, decrypt } = require('./encryption.js');
