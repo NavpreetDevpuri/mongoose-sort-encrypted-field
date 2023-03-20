@@ -1,8 +1,8 @@
 {
   "name": "mongoose-sort-encrypted-field",
-  "version": "0.0.7",
+  "version": "0.0.8a",
   "description": "Mongoose plugin to enable sorting on encrypted fields",
-  "main": "index.js",
+  "main": "lib/index.js",
   "scripts": {
     "build": "npx tsc"
   },
