@@ -1,6 +1,6 @@
 {
   "name": "mongoose-sort-encrypted-field",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Mongoose plugin to enable sorting on encrypted fields",
   "main": "index.js",
   "scripts": {
@@ -10,7 +10,7 @@
     "type": "git",
     "url": "git+https://github.com/NavpreetDevpuri/mongoose-sort-encrypted-field.git"
   },
-  "keywords": [],
+  "keywords": ["mongoose", "plugin", "sorting", "encrypted", "encrypted field", "encrypted field sorting"],
   "author": "",
   "license": "ISC",
   "bugs": {

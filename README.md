@@ -61,7 +61,9 @@ const userSchema = new mongoose.Schema({
 userSchema.plugin(sortEncryptedFields);
 const User = mongoose.model('User', userSchema);
 
-// Sometimes some field could be missed due to server crash or anything so, handle those.
+// Sometimes some field could be missed 
+// Due to server crash or anything 
+// So, handling those.
 evaluateMissedSortFields(User);
 
 module.exports = User;
