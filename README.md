@@ -44,7 +44,7 @@ module.exports = User;
 Then we can sort all records by email from 'emailSort' field. For proformace we can create mongoDB index for that field.
 
 ```javascript
-const await sortedUsers = await User.find({}).sort({ emailSort: 1 }).exec();
+const sortedUsers = await User.find({}).sort({ emailSort: 1 }).exec();
 ```
 
 # How does it work?

@@ -4,23 +4,41 @@ function sortEncryptedFields(
   schema: {
     post: Function;
     add: Function;
+    options: { sortFields: {}; decrypters: {} };
     paths: {
       [fieldName: string]: {
         options: { get: Function; sortFieldName: string };
       };
     };
   },
-  options
+  options: {
+    noOfDividePartsForSearching?: number;
+    noOfCharsToIncreaseOnSaturation?: number;
+  } = { noOfDividePartsForSearching: 100, noOfCharsToIncreaseOnSaturation: 2 }
 ) {
   const {
     noOfDividePartsForSearching = 100,
     noOfCharsToIncreaseOnSaturation = 2,
   } = options;
-  options.noOfDividePartsForSearching = noOfDividePartsForSearching;
-  options.noOfCharsToIncreaseOnSaturation = noOfCharsToIncreaseOnSaturation;
 
-  const sortFields: { [key: string]: string } = {};
+  const sortFields = {};
   const decrypters = {};
+
+  for (const [fieldName, field] of Object.entries(schema.paths)) {
+    if (!field.options.sortFieldName) continue;
+    if (!sortFields[fieldName])
+      sortFields[fieldName] = field.options.sortFieldName;
+    if (!decrypters[fieldName]) decrypters[fieldName] = field.options.get;
+    schema.add({
+      [field.options.sortFieldName]: {
+        type: String,
+        default: null,
+      },
+    });
+  }
+
+  schema.options.sortFields = sortFields;
+  schema.options.decrypters = decrypters;
 
   function documentsBinarySearch(documents, fieldName, value) {
     let start = 0;
@@ -94,26 +112,28 @@ function sortEncryptedFields(
     documents,
     fieldName,
     fieldValue,
-    sortFieldName
+    sortFieldName,
+    ignoreSortFieldValue
   ) {
     const index = documentsBinarySearch(documents, fieldName, fieldValue);
     const gteIndex = index - 1;
     const lteIndex = index;
-    const match = {
-      $and: [
-        { [sortFieldName]: { $ne: null } },
-        {
-          [sortFieldName]: {
-            $gte:
-              gteIndex == -1 ? undefined : documents[gteIndex][sortFieldName],
-            $lte:
-              lteIndex == documents.length
-                ? undefined
-                : documents[lteIndex][sortFieldName],
-          },
-        },
-      ],
+    const match: any = {
+      $and: [{ [sortFieldName]: { $ne: ignoreSortFieldValue } }],
     };
+
+    if (gteIndex === -1 && lteIndex === documents.length) {
+      return match;
+    }
+
+    match.$and.push({ [sortFieldName]: {} });
+
+    if (gteIndex !== -1) {
+      match.$and[1][sortFieldName].$gte = documents[gteIndex][sortFieldName];
+    }
+    if (lteIndex !== documents.length) {
+      match.$and[1][sortFieldName].$lte = documents[lteIndex][sortFieldName];
+    }
 
     return match;
   }
@@ -123,16 +143,20 @@ function sortEncryptedFields(
     model,
     fieldName,
     fieldValue,
-    sortFieldName
+    sortFieldName,
+    ignoreSortFieldValue = null
   ) {
     console.time(`Total time took to update orderId: ${objectId}`);
     const pipeline = [];
     let currN = Math.round(
       (await model.find({}).count().exec()) / noOfDividePartsForSearching
     );
-    let match: {} = { $and: { [sortFieldName]: { $ne: null } } };
-    let documents;
-    while (true) {
+    let match: {} = {
+      $and: [{ [sortFieldName]: { $ne: ignoreSortFieldValue } }],
+    };
+    let documents = [];
+
+    while (currN > 0) {
       documents = await model.aggregate([
         { $match: match },
         {
@@ -153,23 +177,37 @@ function sortEncryptedFields(
         { $project: { [fieldName]: 1, [sortFieldName]: 1 } },
       ]);
 
-      if (currN < noOfDividePartsForSearching) {
-        break;
-      }
       match = await getMatchForAggregate(
         documents,
         fieldName,
         fieldValue,
-        sortFieldName
+        sortFieldName,
+        ignoreSortFieldValue
       );
       currN = Math.round(currN / noOfDividePartsForSearching);
     }
+    match = await getMatchForAggregate(
+      documents,
+      fieldName,
+      fieldValue,
+      sortFieldName,
+      ignoreSortFieldValue
+    );
+    documents = await model
+      .aggregate([
+        { $match: match },
+        { $project: { [fieldName]: 1, [sortFieldName]: 1 } },
+        { $sort: { [sortFieldName]: 1 } },
+      ])
+      .exec();
 
     const index = documentsBinarySearch(documents, fieldName, fieldValue);
     let gteIndex = index - 1;
     let lteIndex = index;
-    const predecessorSortId = documents[gteIndex][sortFieldName];
-    const successorSortId = documents[lteIndex][sortFieldName];
+    const predecessorSortId =
+      documents[gteIndex] && documents[gteIndex][sortFieldName];
+    const successorSortId =
+      documents[lteIndex] && documents[lteIndex][sortFieldName];
     const newSortId = getAverageSortId(predecessorSortId, successorSortId);
     await model.updateOne(
       { _id: objectId },
@@ -180,22 +218,16 @@ function sortEncryptedFields(
       .count()
       .exec();
     if (documentsCountWithSameSortId > 1) {
-      const documentsWithSameSortId = await model
-        .find(
-          { [sortFieldName]: newSortId.toString() },
-          { _id: 1, [fieldName]: 1 }
-        )
-        .exec();
       console.log(
-        `mongoose-sort-encrypted-field -> Got collions, retrying... ${documentsWithSameSortId}`
+        `mongoose-sort-encrypted-field -> Got collions, retrying... ${objectId}`
       );
-      for (const document of documentsWithSameSortId) {
-        // Retrigering sortId generation due to collion
-        await model.updateOne(
-          { _id: document._id },
-          { $set: { [fieldName]: document[fieldName] } }
-        );
-      }
+      // Retrigering sortId generation due to collion
+
+      console.timeEnd(`Total time took to update orderId: ${objectId}`);
+      await model.updateOne(
+        { _id: objectId },
+        { $set: { [fieldName]: decrypters[fieldName][document[fieldName]] } }
+      );
     }
     console.timeEnd(`Total time took to update orderId: ${objectId}`);
   }
@@ -207,14 +239,17 @@ function sortEncryptedFields(
     fieldValue,
     sortFieldName
   ) {
-    const document = await model.findOne(filter, { _id: 1 }).exec();
+    const document = await model
+      .findOne(filter, { _id: 1, [sortFieldName]: 1 })
+      .exec();
     if (document) {
       await updateSortFieldsForDocument(
         document._id,
         model,
         fieldName,
         fieldValue,
-        sortFieldName
+        sortFieldName,
+        document[sortFieldName]
       );
     }
   }
@@ -226,35 +261,22 @@ function sortEncryptedFields(
     fieldValue,
     sortFieldName
   ) {
-    const documents = await model.find(filter, { _id: 1 }).exec();
+    const documents = await model
+      .find(filter, { _id: 1, [sortFieldName]: 1 })
+      .exec();
     if (documents && documents.length > 0) {
       for (let i = 0; i < documents.length; i += 1) {
         await updateSortFieldsForDocument(
           documents[i]._id,
           model,
           fieldName,
-          fieldValue,
-          sortFieldName
+          decrypters[fieldName](fieldValue),
+          sortFieldName,
+          documents[i][sortFieldName]
         );
       }
     }
   }
-
-  for (const [fieldName, field] of Object.entries(schema.paths)) {
-    if (field.options.sortFieldName) {
-      sortFields[fieldName] = field.options.sortFieldName;
-      decrypters[fieldName] = field.options.get;
-      schema.add({
-        [field.options.sortFieldName]: {
-          type: String,
-          default: null,
-        },
-      });
-    }
-  }
-
-  options.sortFields = sortFields;
-  options.decrypters = decrypters;
 
   schema.post('save', async function (doc, next) {
     for (const [fieldName, sortFieldName] of Object.entries(sortFields)) {
@@ -271,7 +293,8 @@ function sortEncryptedFields(
 
   schema.post('updateOne', function (res, next) {
     const update: { $set: { [key: string]: string } } = this.getUpdate();
-    for (const [fieldName, sortFieldName] of Object.entries(sortFields)) {
+    for (const fieldName of Object.keys(sortFields)) {
+      const sortFieldName = sortFields[fieldName];
       if (update.$set && update.$set[sortFieldName]) {
         // Bypass middleware internal call for updating any sortFieldName field
         break;
@@ -279,9 +302,9 @@ function sortEncryptedFields(
       if (update.$set && update.$set[fieldName]) {
         updateSortFieldsForUpdateOne(
           this.getFilter(),
-          this.constructor,
+          this.model,
           fieldName,
-          update.$set[fieldName],
+          decrypters[fieldName](update.$set[fieldName]),
           sortFieldName
         );
       }
@@ -300,9 +323,9 @@ function sortEncryptedFields(
       if (update.$set && update.$set[fieldName]) {
         updateSortFieldsForUpdateMany(
           this.getFilter(),
-          this.constructor,
+          this.model,
           fieldName,
-          update.$set[fieldName],
+          decrypters[fieldName](update.$set[fieldName]),
           sortFieldName
         );
       }
@@ -311,23 +334,26 @@ function sortEncryptedFields(
   });
 }
 
-async function evaluateMissedSortFields(model) {
-  const pluginOptions = model.schema.plugins.find(
+function evaluateMissedSortFields(model) {
+  const plugin = model.schema.plugins.find(
     (plugin) => plugin.fn.name == 'sortEncryptedFields'
   );
-  if (!pluginOptions) {
+  if (!plugin) {
     throw 'Plugin is not enabled on this model, Try ModelSchema.plugin(sortEncryptedFields), brefore creating Model.';
   }
-  for (const fieldName of Object.keys(pluginOptions.sortFields)) {
-    const sortFieldName = pluginOptions.sortFields[fieldName];
-    const documents = await model.find({ [sortFieldName]: { $eq: null } });
-    for (const document of documents) {
-      // Retrigering sortId generation
-      await model.updateOne(
-        { _id: document._id },
-        { $set: { [fieldName]: document[fieldName] } }
-      );
-    }
+  model.schema.options.model = model;
+  const { sortFields, decrypters } = model.schema.options;
+  for (const fieldName of Object.keys(sortFields)) {
+    const sortFieldName = sortFields[fieldName];
+    model.find({ [sortFieldName]: { $eq: null } }).then(async (documents) => {
+      for (const document of documents) {
+        // Retrigering sortId generation
+        await model.updateOne(
+          { _id: document._id },
+          { $set: { [fieldName]: decrypters[fieldName](document[fieldName]) } }
+        );
+      }
+    });
   }
 }
 module.exports = { sortEncryptedFields, evaluateMissedSortFields };
