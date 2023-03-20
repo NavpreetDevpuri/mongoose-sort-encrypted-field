@@ -9,7 +9,7 @@ npm i mongoose-sort-encrypted-field
 ```
 
 # Example
-## user.js
+
 We are having user with encrypted email
 
 ```javascript
