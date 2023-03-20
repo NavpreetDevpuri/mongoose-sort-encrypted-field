@@ -50,3 +50,5 @@ const await sortedUsers = await User.find({}).sort({ emailSort: 1 }).exec();
 # How does it work?
 
 We create a sort order ID which is just a number in base 2^16, which is huge number system as compared to 10 base number system. We search in DB similar way to binary search but dividing the records into 100 parts intead of 2 parts in binary search. It generate sort order ID in O(1). 
+
+Sort order generation is asynchronous using mongoose post middlewares.
