@@ -20,13 +20,15 @@ function sortEncryptedFields(
     noOfCharsToIncreaseOnSaturation?: number;
     ignoreCases?: boolean;
     silent: boolean;
-    sortFieldRevaluateThreshold: number;
+    revaluateAllThreshold: number;
+    revaluateAllCountThreshold: number;
   } = {
     redisOptions: null,
     noOfCharsToIncreaseOnSaturation: 2,
     ignoreCases: true,
     silent: true,
-    sortFieldRevaluateThreshold: 0.5,
+    revaluateAllThreshold: 0.5,
+    revaluateAllCountThreshold: 100,
   }
 ) {
   const {
@@ -34,7 +36,8 @@ function sortEncryptedFields(
     noOfCharsToIncreaseOnSaturation = 2,
     ignoreCases = true,
     silent = true,
-    sortFieldRevaluateThreshold = 0.5,
+    revaluateAllThreshold = 0.5,
+    revaluateAllCountThreshold = 100,
   } = options;
 
   if (!redisOptions) {
@@ -49,8 +52,8 @@ function sortEncryptedFields(
     noOfCharsToIncreaseOnSaturation?: number;
     ignoreCases?: boolean;
     silent?: boolean;
-    sortFieldRevaluateThreshold: number;
-  } = { redisOptions: null, noOfCharsToIncreaseOnSaturation: 2, ignoreCases: true, silent: true, sortFieldRevaluateThreshold: 0.5, ...options };
+    revaluateAllThreshold: number;
+  } = { redisOptions: null, noOfCharsToIncreaseOnSaturation: 2, ignoreCases: true, silent: true, revaluateAllThreshold: 0.5, ...options };
 
   const sortFields = {};
   const decrypters = {};
@@ -174,34 +177,12 @@ function sortEncryptedFields(
   });
 }
 
-
-async function generateSortIdForAllDocuments(model, fieldName, sortFieldName) {
-  if (!model.schema.options.sortEncryptedFieldsOptions.silent)
-    console.time("mongoose-sort-encrypted-field -> generateSortIdForAllDocuments() -> timeTaken: ");
-  const patients = await model.find({}, { [fieldName]: 1 }).exec();
-  patients.sort((a, b) => a[fieldName].localeCompare(b[fieldName]));
-  const n = patients.length;
-  const log2n = Math.round(Math.log2(n)) + 1;
-  let diff = new Base2N("".padEnd(50, "\uffff"));
-  for (let i = 0; i < log2n; i++) {
-    diff = diff.half();
-  }
-  let curr = new Base2N("\0");
-  curr = curr.add(diff);
-  for (let i = 0; i < n; i += 1) {
-    await model.updateOne({ _id: patients[i]._id }, { $set: { [sortFieldName]: curr.toString() } });
-    curr = curr.add(diff);
-  }
-  if (!model.schema.options.sortEncryptedFieldsOptions.silent)
-    console.timeEnd("mongoose-sort-encrypted-field -> generateSortIdForAllDocuments() -> timeTaken: ");
-}
-
 function getModelWithSortEncryptedFieldsPlugin(documentName, schema, pluginOptions) {
   schema.plugin(sortEncryptedFields, pluginOptions);
-  const { ignoreCases, noOfCharsToIncreaseOnSaturation, sortFields, modelsQueue } = schema.options.sortEncryptedFieldsOptions;
+  const { ignoreCases, noOfCharsToIncreaseOnSaturation, sortFields, modelsQueue, revaluateAllThreshold, revaluateAllCountThreshold } =
+    schema.options.sortEncryptedFieldsOptions;
   const model = mongoose.model(documentName, schema);
   modelsQueue.registerModel(model);
-  const { sortFieldRevaluateThreshold = 0.5 } = pluginOptions;
   model
     .find({})
     .count()
@@ -210,9 +191,20 @@ function getModelWithSortEncryptedFieldsPlugin(documentName, schema, pluginOptio
       const {} = model.schema.options;
       for (const fieldName of Object.keys(sortFields)) {
         const sortFieldName = sortFields[fieldName];
-        const noOfDocumentsWithoutSortId = await model.find({ [sortFieldName]: { $eq: null } }).count().exec();
-        if (noOfDocumentsWithoutSortId / noOfTotalDocuments > sortFieldRevaluateThreshold) {
-          await generateSortIdForAllDocuments(model, fieldName, sortFieldName);
+        const noOfDocumentsWithoutSortId = await model
+          .find({ [sortFieldName]: { $eq: null } })
+          .count()
+          .exec();
+        if (
+          noOfDocumentsWithoutSortId <= revaluateAllCountThreshold ||
+          noOfDocumentsWithoutSortId / noOfTotalDocuments > revaluateAllThreshold
+        ) {
+          await modelsQueue.addJob(model, {
+            generateSortIdForAllDocuments: true,
+            fieldName,
+            sortFieldName,
+            ignoreCases,
+          });
         } else {
           const documents = await model.find({ [sortFieldName]: { $eq: null } }, { _id: 1, [fieldName]: 1 }).exec();
           if (documents && documents.length > 0) {

@@ -1,6 +1,6 @@
 const { RedisQueueClient } = require("redis-ordered-queue");
 const Redis = require("ioredis");
-const { updateSortFieldsForDocument } = require("./utils");
+const { updateSortFieldsForDocument, generateSortIdForAllDocuments } = require("./utils");
 
 let modelsQueue;
 class ModelsQueue {
@@ -30,6 +30,10 @@ class ModelsQueue {
     if (!data.model.schema.options.sortEncryptedFieldsOptions.silent) {
       const noOfPendingJobs = (await modelsQueue.client.getMetrics(100)).topMessageGroupsMessageBacklogLength;
       console.log(`mongoose-sort-encrypted-field -> handleMessage() -> noOfPendingJobs: ${noOfPendingJobs}`);
+    }
+    if (data.generateSortIdForAllDocuments) {
+      await generateSortIdForAllDocuments(data);
+      return;
     }
     await updateSortFieldsForDocument(data);
   }
