@@ -4,6 +4,12 @@ async function documentsBinarySearch(model, fieldName, fieldValue, sortFieldName
     .findOne({ [sortFieldName]: { $ne: null } })
     .count()
     .exec();
+  if (n === 0) {
+    return {
+      predecessorSortId: null,
+      successorSortId: new Base2N("\0").toString(),
+    };
+  }
   let start = 0;
   let end = n - 1;
   let startDoc = await model
@@ -13,7 +19,7 @@ async function documentsBinarySearch(model, fieldName, fieldValue, sortFieldName
     .exec();
   let midDoc;
   let endDoc = await model
-    .findOne({ [sortFieldName]: { $ne: null } }, { [fieldName]: 1 })
+    .findOne({ [sortFieldName]: { $ne: null } }, { [fieldName]: 1, [sortFieldName]: 1 })
     .sort({ [sortFieldName]: 1 })
     .skip(end)
     .exec();
@@ -25,7 +31,7 @@ async function documentsBinarySearch(model, fieldName, fieldValue, sortFieldName
   while (start <= end) {
     const mid = Math.ceil((start + end) / 2);
     midDoc = await model
-      .findOne({ [sortFieldName]: { $ne: null } }, { [fieldName]: 1 })
+      .findOne({ [sortFieldName]: { $ne: null } }, { [fieldName]: 1, [sortFieldName]: 1 })
       .sort({ [sortFieldName]: 1 })
       .skip(mid)
       .exec();
@@ -39,11 +45,11 @@ async function documentsBinarySearch(model, fieldName, fieldValue, sortFieldName
 
     if (fieldValue < midValue) {
       end = mid - 1;
-      if (end === 0) {
+      if (end <= 0) {
         break;
       }
       endDoc = await model
-        .findOne({ [sortFieldName]: { $ne: null } }, { [fieldName]: 1 })
+        .findOne({ [sortFieldName]: { $ne: null } }, { [fieldName]: 1, [sortFieldName]: 1 })
         .sort({ [sortFieldName]: 1 })
         .skip(end)
         .exec();
@@ -70,7 +76,8 @@ async function documentsBinarySearch(model, fieldName, fieldValue, sortFieldName
   if (start === n) {
     startDoc = await model
       .findOne({ [sortFieldName]: { $ne: null } }, { [sortFieldName]: 1 })
-      .sort({ [sortFieldName]: -1 })
+      .sort({ [sortFieldName]: 1 })
+      .skip(start - 1)
       .exec();
     return {
       predecessorSortId: startDoc[sortFieldName],
@@ -78,16 +85,16 @@ async function documentsBinarySearch(model, fieldName, fieldValue, sortFieldName
     };
   }
 
-  let predecessorDoc = endDoc;
-  const successorDoc = startDoc;
-
-  if (end === start - 1) {
-    predecessorDoc = await model
-      .findOne({ [sortFieldName]: { $ne: null } }, { [sortFieldName]: 1 })
+  if (start === end) {
+    endDoc = await model
+      .findOne({ [sortFieldName]: { $ne: null } }, { [fieldName]: 1, [sortFieldName]: 1 })
       .sort({ [sortFieldName]: 1 })
-      .skip(end)
+      .skip(start - 1)
       .exec();
   }
+
+  let predecessorDoc = endDoc;
+  const successorDoc = startDoc;
 
   return {
     predecessorSortId: predecessorDoc[sortFieldName],
@@ -150,13 +157,37 @@ async function updateSortFieldsForDocument({
     if (!model.schema.options.sortEncryptedFieldsOptions.silent)
       console.log(`mongoose-sort-encrypted-field -> Got collions, retrying... objectId: ${objectId}`);
     // Retrigering sortId generation due to collion
-    const documentsWithSameSortId = await model.find({ [sortFieldName]: newSortId.toString() }, { [fieldName]: 1 }).exec();
-    for (const document of documentsWithSameSortId) {
-      await model.updateOne({ _id: objectId }, { $set: { [fieldName]: document[fieldName] } });
-    }
+    throw `mongoose-sort-encrypted-field -> Got collions, retrying... objectId: ${objectId}`;
   }
   if (!model.schema.options.sortEncryptedFieldsOptions.silent)
     console.timeEnd(`mongoose-sort-encrypted-field -> updateSortFieldsForDocument() -> objectId: ${objectId}, timeTaken: `);
 }
 
-export { documentsBinarySearch, getAverageSortId, updateSortFieldsForDocument };
+async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName, ignoreCases }) {
+  if (!model.schema.options.sortEncryptedFieldsOptions.silent)
+    console.time("mongoose-sort-encrypted-field -> generateSortIdForAllDocuments() -> timeTaken: ");
+  const patients = await model.find({}, { [fieldName]: 1 }).exec();
+  patients.sort((a, b) => {
+    let aValue = a[fieldName];
+    let bValue = b[fieldName];
+    aValue = ignoreCases ? aValue.toLowerCase() : aValue;
+    bValue = ignoreCases ? bValue.toLowerCase() : bValue;
+    return aValue.localeCompare(bValue);
+  });
+  const n = patients.length;
+  const log2n = Math.round(Math.log2(n)) + 1;
+  let diff = new Base2N("".padEnd(50, "\uffff"));
+  for (let i = 0; i < log2n; i++) {
+    diff = diff.half();
+  }
+  let curr = new Base2N("\0");
+  curr = curr.add(diff);
+  for (let i = 0; i < n; i += 1) {
+    await model.updateOne({ _id: patients[i]._id }, { $set: { [sortFieldName]: curr.toString() } });
+    curr = curr.add(diff);
+  }
+  if (!model.schema.options.sortEncryptedFieldsOptions.silent)
+    console.timeEnd("mongoose-sort-encrypted-field -> generateSortIdForAllDocuments() -> timeTaken: ");
+}
+
+export { documentsBinarySearch, getAverageSortId, updateSortFieldsForDocument, generateSortIdForAllDocuments };
