@@ -1,6 +1,6 @@
 {
   "name": "mongoose-sort-encrypted-field",
-  "version": "0.0.9",
+  "version": "1.0.0",
   "description": "Mongoose plugin to enable sorting on encrypted fields",
   "main": "lib/index.js",
   "scripts": {
@@ -10,7 +10,15 @@
     "type": "git",
     "url": "git+https://github.com/NavpreetDevpuri/mongoose-sort-encrypted-field.git"
   },
-  "keywords": ["mongoose", "plugin", "sorting", "encrypted", "encrypted field", "encrypted field sorting"],
+  "keywords": [
+    "mongoose",
+    "plugin",
+    "sorting",
+    "encrypted",
+    "encrypted field",
+    "encrypted field sorting",
+    "sort encrypted field"
+  ],
   "author": "",
   "license": "ISC",
   "bugs": {
@@ -18,7 +26,10 @@
   },
   "homepage": "https://github.com/NavpreetDevpuri/mongoose-sort-encrypted-field#readme",
   "dependencies": {
-    "@navpreetdevpuri/base-2-n": "0.0.9"
+    "@navpreetdevpuri/base-2-n": "0.0.9",
+    "ioredis": "^5.3.1",
+    "mongoose": "^7.0.2",
+    "redis-ordered-queue": "^1.4.2"
   },
   "devDependencies": {
     "@types/node": "^18.15.3",
