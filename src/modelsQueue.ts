@@ -1,7 +1,7 @@
 const { RedisQueueClient } = require("redis-ordered-queue");
 const Redis = require("ioredis");
 const { updateSortFieldsForDocument, generateSortIdForAllDocuments } = require("./utils");
-
+const redisKeyPrefix = "mongoose-sort-encrypted-field";
 let modelsQueue;
 class ModelsQueue {
   client: typeof RedisQueueClient;
@@ -14,7 +14,7 @@ class ModelsQueue {
       groupVisibilityTimeoutMs: 60000,
       pollingTimeoutMs: 10000,
       consumerCount: 1,
-      redisKeyPrefix: "mongoose-sort-encrypted-field",
+      redisKeyPrefix,
     });
 
     this.client.startConsumers({ handleMessage: this.handleMessage });
@@ -38,18 +38,21 @@ class ModelsQueue {
     await updateSortFieldsForDocument(data);
   }
 
-  async addJob(model, data) {
-    const modelName = model.name;
-    if (!this.modelNameToModelMap[modelName]) {
-      this.modelNameToModelMap[modelName] = model;
-    }
-    await this.client.send({ data, groupId: model.modelName });
+  async addJob(modelName, data) {
+    await this.client.send({ data, groupId: modelName });
   }
 
   registerModel(model) {
     if (!this.modelNameToModelMap[model.modelName]) {
       this.modelNameToModelMap[model.modelName] = model;
     }
+  }
+
+  async removeAllJobs(modelName) {
+    const keys = await this.client.redis.keys(`${redisKeyPrefix}::msg-group-queue::${modelName}`);
+    var pipeline = this.client.redis.pipeline();
+    keys.forEach(function (key) { pipeline.del(key) });
+    pipeline.exec();
   }
 }
 

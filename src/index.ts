@@ -80,7 +80,7 @@ function sortEncryptedFields(
 
   schema.post("save", async function (doc, next) {
     for (const [fieldName, sortFieldName] of Object.entries(sortFields)) {
-      await modelsQueue.addJob(this.constructor, {
+      await modelsQueue.addJob(this.constructor.modelName, {
         objectId: doc._id,
         fieldName,
         fieldValue: ignoreCases ? doc[fieldName].toLowerCase() : doc[fieldName],
@@ -119,7 +119,7 @@ function sortEncryptedFields(
         const document = await this.model.findOne(this.getFilter(), { _id: 1, [fieldName]: 1 }).exec();
         if (document) {
           const fieldValue = document[fieldName];
-          await modelsQueue.addJob(this.model, {
+          await modelsQueue.addJob(this.modelName.model, {
             objectId: document._id,
             fieldName,
             fieldValue: ignoreCases ? fieldValue.toLowerCase() : fieldValue,
@@ -161,7 +161,7 @@ function sortEncryptedFields(
         const documents = await this.model.find(this.getFilter(), { _id: 1 }).exec();
         if (documents && documents.length > 0) {
           for (let i = 0; i < documents.length; i += 1) {
-            await modelsQueue.addJob(this.model, {
+            await modelsQueue.addJob(this.model.modelName, {
               objectId: documents[i]._id,
               fieldName,
               fieldValue: ignoreCases ? fieldValue.toLowerCase() : fieldValue,
@@ -199,7 +199,8 @@ function getModelWithSortEncryptedFieldsPlugin(documentName, schema, pluginOptio
           noOfDocumentsWithoutSortId <= revaluateAllCountThreshold ||
           noOfDocumentsWithoutSortId / noOfTotalDocuments > revaluateAllThreshold
         ) {
-          await modelsQueue.addJob(model, {
+          await modelsQueue.removeAllJobs(model.modelName);
+          await modelsQueue.addJob(model.modelName, {
             generateSortIdForAllDocuments: true,
             fieldName,
             sortFieldName,
@@ -210,7 +211,7 @@ function getModelWithSortEncryptedFieldsPlugin(documentName, schema, pluginOptio
           if (documents && documents.length > 0) {
             for (let i = 0; i < documents.length; i += 1) {
               const fieldValue = documents[i][fieldName];
-              await modelsQueue.addJob(model, {
+              await modelsQueue.addJob(model.modelName, {
                 objectId: documents[i]._id,
                 fieldName,
                 fieldValue,
