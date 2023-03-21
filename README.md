@@ -14,7 +14,7 @@ We are having a user with an encrypted email, We just need to add the `sortField
 
 ```javascript
 const { encrypt, decrypt } = require("./encryption.js");
-const { sortEncryptedFields, evaluateMissedSortFields } = require("mongoose-sort-encrypted-field");
+const { getModelWithSortEncryptedFieldsPlugin } = require("mongoose-sort-encrypted-field");
 
 const userSchema = new mongoose.Schema({
   email: {
