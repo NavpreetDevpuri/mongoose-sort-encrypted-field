@@ -27,9 +27,11 @@ class ModelsQueue {
     },
   }) {
     data.model = modelsQueue.modelNameToModelMap[groupId];
-    console.time(`updateSortFieldsForDocument ${data.objectId}`);
+    if (!data.model.schema.options.sortEncryptedFieldsOptions.silent) {
+      const noOfPendingJobs = (await modelsQueue.client.getMetrics(100)).topMessageGroupsMessageBacklogLength;
+      console.log(`mongoose-sort-encrypted-field -> handleMessage() -> noOfPendingJobs: ${noOfPendingJobs}`);
+    }
     await updateSortFieldsForDocument(data);
-    console.timeEnd(`updateSortFieldsForDocument ${data.objectId}`);
   }
 
   async addJob(model, data) {
