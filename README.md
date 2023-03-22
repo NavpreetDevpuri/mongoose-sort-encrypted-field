@@ -29,7 +29,7 @@ const userSchema = new mongoose.Schema({
 
 const User = getModelWithSortEncryptedFieldsPlugin("User", userSchema, {
   redisOptions: { host: "localhost", port: 6379 },
-  silent: false,
+  ignoreCases: true,
 });
 
 /* 
