@@ -32,11 +32,6 @@ const User = getModelWithSortEncryptedFieldsPlugin("User", userSchema, {
   ignoreCases: true,
 });
 
-/* 
-
-
-*/
-
 module.exports = User;
 ```
 
@@ -57,14 +52,14 @@ const sortedUsers = await User.find({}).sort({ emailSort: 1 }).exec();
     In the base `2^16` number system, getting a saturation like that is mathematically very unlikely.
   3. `ignoreCases?: boolean;` default: `false` <br>
     To ignore cases.
-  4. `silent: boolean;` default: `false` <br>
+  4. `silent?: boolean;` default: `false` <br>
     Flag to turn on/off console info logs
-  5. `revaluateAllThreshold: number;` default: `0.5` <br>
+  5. `revaluateAllThreshold?: number;` default: `0.5` <br>
     If the number of documents without sort ID divides by the total number of documents is less than this threshold
     Then it will get all values, sort them, generate sort ID for all at equal distance 0 to 2^16
     For example if we have 3 documents and we can 00 to 20 sort ID 
     then those documents will have 05 10 15 sort ID
-  6. `revaluateAllCountThreshold: number;` default: `100` <br>
+  6. `revaluateAllCountThreshold?: number;` default: `100` <br>
     If the total number of documents is less than this value 
     then it will regenerate the sort ID the same way as revaluateAllThreshold
 

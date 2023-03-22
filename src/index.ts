@@ -17,16 +17,16 @@ options:
   ignoreCases?: boolean; 
     default: false;
       To ignore cases.
-  silent: boolean; 
+  silent?: boolean; 
     default: false;
       Flag to turn on/off console info logs
-  revaluateAllThreshold: number;
+  revaluateAllThreshold?: number;
     default: 0.5
       If number of documents without sort ID divides by total number of documents is less then this threshold
       Then it will get all values, sort them, generate sort ID for all at equal distance 0 to 2^16
       For example if we have 3 documents and we can 00 to 20 sort ID 
       then those documents will have 05 10 15 sort ID
-  revaluateAllCountThreshold: number;
+  revaluateAllCountThreshold?: number;
     default: 100
       If total number of documents are less then this value 
       then it will regenerat sort ID same way as revaluateAllThreshold
