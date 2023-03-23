@@ -165,15 +165,18 @@ async function updateSortFieldsForDocument({
 async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName, ignoreCases }) {
   if (!model.schema.options.sortEncryptedFieldsOptions.silent)
     console.time("mongoose-sort-encrypted-field -> generateSortIdForAllDocuments() -> timeTaken: ");
-  const patients = await model.find({}, { [fieldName]: 1 }).exec();
-  patients.sort((a, b) => {
+  const documents = await model.find({}, { [fieldName]: 1 }).exec();
+  documents.sort((a, b) => {
     let aValue = a[fieldName];
     let bValue = b[fieldName];
+    if (!aValue && !bValue) return 0;
+    if (!aValue) return 1;
+    if (!bValue) return -1;
     aValue = ignoreCases ? aValue.toLowerCase() : aValue;
     bValue = ignoreCases ? bValue.toLowerCase() : bValue;
     return aValue.localeCompare(bValue);
   });
-  const n = patients.length;
+  const n = documents.length;
   const log2n = Math.round(Math.log2(n)) + 1;
   let diff = new Base2N("".padEnd(50, "\uffff"));
   for (let i = 0; i < log2n; i++) {
@@ -182,7 +185,7 @@ async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName, 
   let curr = new Base2N("\0");
   curr = curr.add(diff);
   for (let i = 0; i < n; i += 1) {
-    await model.updateOne({ _id: patients[i]._id }, { $set: { [sortFieldName]: curr.toString() } });
+    await model.updateOne({ _id: documents[i]._id }, { $set: { [sortFieldName]: curr.toString() } });
     curr = curr.add(diff);
   }
   if (!model.schema.options.sortEncryptedFieldsOptions.silent)
