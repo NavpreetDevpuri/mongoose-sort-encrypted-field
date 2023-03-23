@@ -1,3 +1,5 @@
+const Redis = require("ioredis");
+
 const REDIS_QUEUE_CLIENT_OPTIONS: RedisQueueClientOptions = {
   redis: new Redis(),
   batchSize: 10,
@@ -15,3 +17,5 @@ const PLUGIN_OPTIONS: PluginOptions = {
   revaluateAllThreshold: 0.5,
   revaluateAllCountThreshold: 100,
 };
+
+export { REDIS_QUEUE_CLIENT_OPTIONS, PLUGIN_OPTIONS };

@@ -74,3 +74,5 @@ function getModelsQueue(redisOptions) {
   }
   return modelsQueue;
 }
+
+export { getModelsQueue };

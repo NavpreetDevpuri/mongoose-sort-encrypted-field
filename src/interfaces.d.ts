@@ -38,5 +38,3 @@ interface Schema {
 interface Update {
   $set: { [key: string]: string };
 }
-
-// export { RedisQueueClientOptions, PluginOptions };
