@@ -1,10 +1,9 @@
-const Base2N = require("@navpreetdevpuri/base-2-n");
-
 // mongoose is not in package.json to avoid compatibility issues with npm package user
 const mongoose = require("mongoose");
 
-const { REDIS_QUEUE_CLIENT_OPTIONS, PLUGIN_OPTIONS } = require('./constants');
-const { getModelsQueue } = require('./modelsQueue');
+const { REDIS_QUEUE_CLIENT_OPTIONS, PLUGIN_OPTIONS } = require("./constants");
+const { getModelsQueue } = require("./modelsQueue");
+const { generateSortIdForAllDocuments } = require("./utils");
 
 function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
   const sortEncryptedFieldsOptions: SortEncryptedFieldsOptions = {
@@ -155,13 +154,10 @@ function getModelWithSortEncryptedFieldsPlugin(documentName, schema, pluginOptio
       for (const fieldName in sortFields) {
         const sortFieldName = sortFields[fieldName];
         const noOfDocumentsWithoutSortId = await model
-          .find({ [sortFieldName]: { $eq: null } })
+          .find({ $or: [{ [sortFieldName]: null }, { [sortFieldName]: { $exists: false } }] })
           .count()
           .exec();
-        if (
-          noOfDocumentsWithoutSortId <= revaluateAllCountThreshold ||
-          noOfDocumentsWithoutSortId / noOfTotalDocuments > revaluateAllThreshold
-        ) {
+        if (noOfTotalDocuments <= revaluateAllCountThreshold || noOfDocumentsWithoutSortId / noOfTotalDocuments > revaluateAllThreshold) {
           await modelsQueue.removeAllJobs(`${model.modelName}${sortFieldName}`);
           await modelsQueue.addJob(`${model.modelName}${sortFieldName}`, {
             generateSortIdForAllDocuments: true,
@@ -170,7 +166,9 @@ function getModelWithSortEncryptedFieldsPlugin(documentName, schema, pluginOptio
             ignoreCases,
           });
         } else {
-          const documents = await model.find({ [sortFieldName]: { $eq: null } }, { _id: 1, [fieldName]: 1 }).exec();
+          const documents = await model
+            .find({ $or: [{ [sortFieldName]: null }, { [sortFieldName]: { $exists: false } }] }, { _id: 1, [fieldName]: 1 })
+            .exec();
           if (documents && documents.length > 0) {
             for (let i = 0; i < documents.length; i += 1) {
               const fieldValue = documents[i][fieldName];

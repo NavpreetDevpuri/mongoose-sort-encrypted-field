@@ -1,3 +1,5 @@
+const Base2N = require("@navpreetdevpuri/base-2-n");
+
 async function documentsBinarySearch(model, fieldName, fieldValue, sortFieldName, ignoreCases) {
   const n = await model
     .findOne({ [sortFieldName]: { $ne: null } })
@@ -164,7 +166,9 @@ async function updateSortFieldsForDocument({
 
 async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName, ignoreCases }) {
   if (!model.schema.options.sortEncryptedFieldsOptions.silent)
-    console.time("mongoose-sort-encrypted-field -> generateSortIdForAllDocuments() -> timeTaken: ");
+    console.time(
+      `mongoose-sort-encrypted-field -> generateSortIdForAllDocuments() -> fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, timeTaken: `
+    );
   const documents = await model.find({}, { [fieldName]: 1 }).exec();
   documents.sort((a, b) => {
     let aValue = a[fieldName];
@@ -189,5 +193,9 @@ async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName, 
     curr = curr.add(diff);
   }
   if (!model.schema.options.sortEncryptedFieldsOptions.silent)
-    console.timeEnd("mongoose-sort-encrypted-field -> generateSortIdForAllDocuments() -> timeTaken: ");
+    console.timeEnd(
+      `mongoose-sort-encrypted-field -> generateSortIdForAllDocuments() -> fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, timeTaken: `
+    );
 }
+
+export { updateSortFieldsForDocument, generateSortIdForAllDocuments };

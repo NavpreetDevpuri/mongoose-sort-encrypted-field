@@ -1,6 +1,10 @@
 const { RedisQueueClient } = require("redis-ordered-queue");
 const Redis = require("ioredis");
 const defaultRedisKeyPrefix = "mongoose-sort-encrypted-field";
+
+const { REDIS_QUEUE_CLIENT_OPTIONS } = require('./constants');
+const { updateSortFieldsForDocument, generateSortIdForAllDocuments } = require('./utils');
+
 let modelsQueue;
 class ModelsQueue {
   client: typeof RedisQueueClient;
@@ -52,7 +56,7 @@ class ModelsQueue {
     await this.client.send({ groupId, data });
   }
 
-  registerGroup(model, groupId) {
+  registerGroup(groupId, model) {
     if (!this.groupIdToModelMap[groupId]) {
       this.groupIdToModelMap[groupId] = model;
     }
