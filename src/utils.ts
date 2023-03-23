@@ -174,8 +174,8 @@ async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName, 
     let aValue = a[fieldName];
     let bValue = b[fieldName];
     if (!aValue && !bValue) return 0;
-    if (!aValue) return 1;
-    if (!bValue) return -1;
+    if (!aValue) return -1;
+    if (!bValue) return 1;
     aValue = ignoreCases ? aValue.toLowerCase() : aValue;
     bValue = ignoreCases ? bValue.toLowerCase() : bValue;
     return aValue.localeCompare(bValue);
