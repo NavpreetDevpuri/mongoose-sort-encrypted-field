@@ -1,19 +1,29 @@
 const { RedisQueueClient } = require("redis-ordered-queue");
 const Redis = require("ioredis");
-const { updateSortFieldsForDocument, generateSortIdForAllDocuments } = require("./utils");
-const redisKeyPrefix = "mongoose-sort-encrypted-field";
+const defaultRedisKeyPrefix = "mongoose-sort-encrypted-field";
 let modelsQueue;
 class ModelsQueue {
   client: typeof RedisQueueClient;
-  modelNameToModelMap = {};
-  constructor(redisOptions) {
-    const redis = new Redis(redisOptions);
+  noOfGroups: number;
+  groupIdToModelMap = {};
+  constructor(redisQueueClientOptions) {
+    redisQueueClientOptions = {
+      ...REDIS_QUEUE_CLIENT_OPTIONS,
+      ...redisQueueClientOptions,
+    };
+    const { redis, batchSize, groupVisibilityTimeoutMs, pollingTimeoutMs, consumerCount, redisKeyPrefix } = redisQueueClientOptions;
+
+    let redisClient = redis;
+    if (!(redis instanceof Redis)) {
+      redisClient = new Redis(redis);
+    }
+
     this.client = new RedisQueueClient({
-      redis,
-      batchSize: 1,
-      groupVisibilityTimeoutMs: 60000,
-      pollingTimeoutMs: 10000,
-      consumerCount: 1,
+      redis: redisClient,
+      batchSize,
+      groupVisibilityTimeoutMs,
+      pollingTimeoutMs,
+      consumerCount,
       redisKeyPrefix,
     });
 
@@ -26,7 +36,7 @@ class ModelsQueue {
       lock: { groupId },
     },
   }) {
-    data.model = modelsQueue.modelNameToModelMap[groupId];
+    data.model = modelsQueue.groupIdToModelMap[groupId];
     if (!data.model.schema.options.sortEncryptedFieldsOptions.silent) {
       const noOfPendingJobs = (await modelsQueue.client.getMetrics(100)).topMessageGroupsMessageBacklogLength;
       console.log(`mongoose-sort-encrypted-field -> handleMessage() -> noOfPendingJobs: ${noOfPendingJobs}`);
@@ -38,20 +48,22 @@ class ModelsQueue {
     await updateSortFieldsForDocument(data);
   }
 
-  async addJob(modelName, data) {
-    await this.client.send({ data, groupId: modelName });
+  async addJob(groupId, data) {
+    await this.client.send({ groupId, data });
   }
 
-  registerModel(model) {
-    if (!this.modelNameToModelMap[model.modelName]) {
-      this.modelNameToModelMap[model.modelName] = model;
+  registerGroup(model, groupId) {
+    if (!this.groupIdToModelMap[groupId]) {
+      this.groupIdToModelMap[groupId] = model;
     }
   }
 
   async removeAllJobs(modelName) {
-    const keys = await this.client.redis.keys(`${redisKeyPrefix}::msg-group-queue::${modelName}`);
+    const keys = await this.client.redis.keys(`${defaultRedisKeyPrefix}::msg-group-queue::${modelName}`);
     var pipeline = this.client.redis.pipeline();
-    keys.forEach(function (key) { pipeline.del(key) });
+    keys.forEach(function (key) {
+      pipeline.del(key);
+    });
     pipeline.exec();
   }
 }
@@ -62,5 +74,3 @@ function getModelsQueue(redisOptions) {
   }
   return modelsQueue;
 }
-
-export = getModelsQueue;

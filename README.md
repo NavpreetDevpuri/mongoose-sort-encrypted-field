@@ -28,7 +28,7 @@ const userSchema = new mongoose.Schema({
 });
 
 const User = getModelWithSortEncryptedFieldsPlugin("User", userSchema, {
-  redisOptions: { host: "localhost", port: 6379 },
+  redisQueueClientOptions: { redis: "redis://localhost:6379" },
   ignoreCases: true,
 });
 
@@ -43,25 +43,44 @@ const sortedUsers = await User.find({}).sort({ emailSort: 1 }).exec();
 
 ### pluginOptions:
 
-  1. `redisOptions: Any;` default: `null` <br>
-    Any options which we can pass to [ioredis]((https://www.npmjs.com/package/ioredis) ) constructor; 
-  2. `noOfCharsToIncreaseOnSaturation?: number;` default: `2` <br>
-    Number of chars to increase on saturation, for example, 
-    for `04` and `05`, first we can see there is no whole number between those 
-    so, It append extra digit at the end and it becomes `040` and `050` and the average is `045`.
-    In the base `2^16` number system, getting a saturation like that is mathematically very unlikely.
-  3. `ignoreCases?: boolean;` default: `false` <br>
-    To ignore cases.
-  4. `silent?: boolean;` default: `false` <br>
-    Flag to turn on/off console info logs
-  5. `revaluateAllThreshold?: number;` default: `0.5` <br>
-    If the number of documents without sort ID divides by the total number of documents is less than this threshold
-    Then it will get all values, sort them, generate sort ID for all at equal distance 0 to 2^16
-    For example if we have 3 documents and we can 00 to 20 sort ID 
-    then those documents will have 05 10 15 sort ID
-  6. `revaluateAllCountThreshold?: number;` default: `100` <br>
-    If the total number of documents is less than this value 
-    then it will regenerate the sort ID the same way as revaluateAllThreshold
+1. `redisQueueClientOptions: RedisQueueClientOptions;` default:
+
+   ```
+   {
+     redis: new Redis(),
+     batchSize: 10,
+     groupVisibilityTimeoutMs: 60000,
+     pollingTimeoutMs: 10000,
+     // Better to have consumerCount in a balance of maximum fields we have to sort vs Resources usage for multiple consumers
+     consumerCount: 1,
+     redisKeyPrefix: "mongoose-sort-encrypted-field",
+   }
+   ```
+
+   <br>
+    Any options which we can pass to [redis-ordered-queue](<(https://www.npmjs.com/package/redis-ordered-queue)>) constructor and redis options can be an instance of [ioredis](https://www.npmjs.com/package/ioredis) or any value that we can pass to ioredis constructor
+
+2. `noOfCharsToIncreaseOnSaturation?: number;` default: `2` <br>
+   Number of chars to increase on saturation, for example,
+   for `04` and `05`, first, we can see there is no whole number between those
+   so, It appends an extra digit at the end and it becomes `040` and `050` and the average is `045`.
+   In the base `2^16` number system, getting a saturation like that is mathematically very unlikely.
+
+3. `ignoreCases?: boolean;` default: `false` <br>
+   To ignore cases.
+
+4. `silent?: boolean;` default: `false` <br>
+   Flag to turn on/off console info logs
+
+5. `revaluateAllThreshold?: number;` default: `0.5` <br>
+   If the number of documents without sort ID divided by the total number of documents is less than this threshold
+   Then it will get all values, sort them, and generate sort ID for all at equal distances 0 to 2^16
+   For example, if we have 3 documents and we can 00 to 20 sort ID
+   then those documents will have 05 10 15 sort ID
+
+6. `revaluateAllCountThreshold?: number;` default: `100` <br>
+   If the total number of documents is less than this value
+   then it will regenerate the sort ID the same way as revaluateAllThreshold
 
 # How does it work?
 

@@ -1,4 +1,3 @@
-const Base2N = require("@navpreetdevpuri/base-2-n");
 async function documentsBinarySearch(model, fieldName, fieldValue, sortFieldName, ignoreCases) {
   const n = await model
     .findOne({ [sortFieldName]: { $ne: null } })
@@ -189,5 +188,3 @@ async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName, 
   if (!model.schema.options.sortEncryptedFieldsOptions.silent)
     console.timeEnd("mongoose-sort-encrypted-field -> generateSortIdForAllDocuments() -> timeTaken: ");
 }
-
-export { documentsBinarySearch, getAverageSortId, updateSortFieldsForDocument, generateSortIdForAllDocuments };
