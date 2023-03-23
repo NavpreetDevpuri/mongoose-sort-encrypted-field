@@ -1,7 +1,10 @@
+const Base2N = require("@navpreetdevpuri/base-2-n");
+
 const { documentsBinarySearch, getAverageSortId, updateSortFieldsForDocument } = require("./utils");
 const getModelsQueue = require("./modelsQueue");
+
+// It is not in package.json to keep it at the same version as the package user's mongoose version to avoid compatibility issues
 const mongoose = require("mongoose");
-const Base2N = require("@navpreetdevpuri/base-2-n");
 
 /*
 options:
