@@ -35,7 +35,7 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
 
   schema.options.sortEncryptedFieldsOptions = sortEncryptedFieldsOptions;
 
-  schema.post("save", async function (doc, next) {
+  schema.post("save", async function save(doc, next) {
     for (const [fieldName, sortFieldName] of Object.entries(sortFields)) {
       await modelsQueue.addJob(`${this.constructor.modelName}${sortFieldName}`, {
         objectId: doc._id,
@@ -49,7 +49,7 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
     next();
   });
 
-  schema.pre("updateOne", async function (res, next) {
+  schema.pre("updateOne", async function preUpdateOne(res, next) {
     const update: Update = this.getUpdate();
     for (const fieldName in sortFields) {
       const sortFieldName = sortFields[fieldName];
@@ -64,7 +64,7 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
     next();
   });
 
-  schema.post("updateOne", async function (res, next) {
+  schema.post("updateOne", async function postUpdateOne(res, next) {
     const update: Update = this.getUpdate();
     for (const fieldName in sortFields) {
       const sortFieldName = sortFields[fieldName];
@@ -90,7 +90,7 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
     next();
   });
 
-  schema.pre("updateMany", async function (res, next) {
+  schema.pre("updateMany", async function preUpdateMany(res, next) {
     const update = this.getUpdate();
     for (const fieldName in sortFields) {
       const sortFieldName = sortFields[fieldName];
@@ -105,7 +105,7 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
     next();
   });
 
-  schema.post("updateMany", async function (res, next) {
+  schema.post("updateMany", async function postUpdateMany(res, next) {
     const update = this.getUpdate();
     for (const fieldName in sortFields) {
       const sortFieldName = sortFields[fieldName];
