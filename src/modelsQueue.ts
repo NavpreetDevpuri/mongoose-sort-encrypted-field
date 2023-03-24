@@ -6,11 +6,13 @@ const { REDIS_QUEUE_CLIENT_OPTIONS } = require("./constants");
 const { updateSortFieldsForDocument, generateSortIdForAllDocuments } = require("./utils");
 
 let modelsQueue;
+
 class ModelsQueue {
   client: typeof RedisQueueClient;
   noOfGroups: number;
   groupIdToModelMap = {};
   constructor(redisQueueClientOptions) {
+    this.groupIdToModelMap = {};
     redisQueueClientOptions = {
       ...REDIS_QUEUE_CLIENT_OPTIONS,
       ...redisQueueClientOptions,
@@ -31,25 +33,23 @@ class ModelsQueue {
       redisKeyPrefix,
     });
 
-    this.client.startConsumers({ handleMessage: this.handleMessage });
-  }
-
-  async handleMessage({
-    data,
-    context: {
-      lock: { groupId },
-    },
-  }) {
-    data.model = modelsQueue.groupIdToModelMap[groupId];
-    if (!data.model.schema.options.sortEncryptedFieldsOptions.silent) {
-      const noOfPendingJobs = (await modelsQueue.client.getMetrics(100)).topMessageGroupsMessageBacklogLength;
-      console.log(`mongoose-sort-encrypted-field -> handleMessage() -> noOfPendingJobs: ${noOfPendingJobs}`);
-    }
-    if (data.generateSortIdForAllDocuments) {
-      await generateSortIdForAllDocuments(data);
-      return;
-    }
-    await updateSortFieldsForDocument(data);
+    this.client.startConsumers({ handleMessage: async function handleMessage({
+      data,
+      context: {
+        lock: { groupId },
+      },
+    }) {
+      data.model = modelsQueue.groupIdToModelMap[groupId];
+      if (!data.model.schema.options.sortEncryptedFieldsOptions.silent) {
+        const noOfPendingJobs = (await modelsQueue.client.getMetrics(100)).topMessageGroupsMessageBacklogLength;
+        console.log(`mongoose-sort-encrypted-field -> handleMessage() -> noOfPendingJobs: ${noOfPendingJobs}`);
+      }
+      if (data.generateSortIdForAllDocuments) {
+        await generateSortIdForAllDocuments(data);
+        return;
+      }
+      await updateSortFieldsForDocument(data);
+    } });
   }
 
   async addJob(groupId, data) {

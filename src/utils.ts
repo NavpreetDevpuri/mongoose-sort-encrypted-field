@@ -157,17 +157,19 @@ async function updateSortFieldsForDocument({
     if (!model.schema.options.sortEncryptedFieldsOptions.silent)
       console.log(`mongoose-sort-encrypted-field -> Got collions, retrying... objectId: ${objectId}`);
     // Retrigering sortId generation due to collion
-    throw `mongoose-sort-encrypted-field -> Got collions, retrying... objectId: ${objectId}`;
+    throw new Error(`mongoose-sort-encrypted-field -> Got collions, retrying... objectId: ${objectId}`);
   }
-  if (!model.schema.options.sortEncryptedFieldsOptions.silent)
+  if (!model.schema.options.sortEncryptedFieldsOptions.silent) {
     console.timeEnd(`mongoose-sort-encrypted-field -> updateSortFieldsForDocument() -> objectId: ${objectId}, timeTaken: `);
+  }
 }
 
 async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName, ignoreCases, noOfCharsForSortId }) {
-  if (!model.schema.options.sortEncryptedFieldsOptions.silent)
+  if (!model.schema.options.sortEncryptedFieldsOptions.silent) {
     console.time(
       `mongoose-sort-encrypted-field -> generateSortIdForAllDocuments() -> fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, timeTaken: `
     );
+  }
   const documents = await model.find({}, { [fieldName]: 1 }).exec();
   documents.sort((a, b) => {
     let aValue = a[fieldName] || '';
@@ -179,7 +181,7 @@ async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName, 
   const n = documents.length;
   const log2n = Math.round(Math.log2(n)) + 1;
   let diff = new Base2N("".padEnd(noOfCharsForSortId, "\uffff"));
-  for (let i = 0; i < log2n; i++) {
+  for (let i = 0; i < log2n; i += 1) {
     diff = diff.half();
   }
   let curr = new Base2N("\0", noOfCharsForSortId);
@@ -188,10 +190,11 @@ async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName, 
     await model.updateOne({ _id: documents[i]._id }, { $set: { [sortFieldName]: curr.toString() } });
     curr = curr.add(diff);
   }
-  if (!model.schema.options.sortEncryptedFieldsOptions.silent)
+  if (!model.schema.options.sortEncryptedFieldsOptions.silent) {
     console.timeEnd(
       `mongoose-sort-encrypted-field -> generateSortIdForAllDocuments() -> fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, timeTaken: `
     );
+  }
 }
 
 export { updateSortFieldsForDocument, generateSortIdForAllDocuments };
