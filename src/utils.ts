@@ -1,7 +1,8 @@
 const Base2N = require("@navpreetdevpuri/base-2-n");
 
-async function documentsBinarySearch(model, fieldName, fieldValue, sortFieldName, ignoreCases, noOfCharsForSortId) {
-  fieldValue = fieldValue || '';
+async function documentsBinarySearch(model, fieldName, fieldValue, sortFieldName) {
+  const { ignoreCases, noOfCharsForSortId } = model.schema.options.sortEncryptedFieldsOptions;
+  fieldValue = fieldValue || "";
   fieldValue = ignoreCases ? fieldValue.toLowerCase() : fieldValue;
   const n = await model
     .findOne({ [sortFieldName]: { $ne: null } })
@@ -38,9 +39,9 @@ async function documentsBinarySearch(model, fieldName, fieldValue, sortFieldName
       .skip(mid)
       .exec();
 
-    startValue = startDoc[fieldName] || '';
-    midValue = midDoc[fieldName] || '';
-    endValue = endDoc[fieldName] || '';
+    startValue = startDoc[fieldName] || "";
+    midValue = midDoc[fieldName] || "";
+    endValue = endDoc[fieldName] || "";
     startValue = ignoreCases ? startValue.toLowerCase() : startValue;
     midValue = ignoreCases ? midValue.toLowerCase() : midValue;
     endValue = ignoreCases ? endValue.toLowerCase() : endValue;
@@ -134,19 +135,12 @@ function getAverageSortId(predecessorSortId, successorSortId, noOfCharsToIncreas
   return biggerNumber.average(smallerNumber).toString();
 }
 
-async function updateSortFieldsForDocument({
-  objectId,
-  model,
-  fieldName,
-  fieldValue,
-  sortFieldName,
-  ignoreCases,
-  noOfCharsForSortId,
-  noOfCharsToIncreaseOnSaturation,
-}) {
-  if (!model.schema.options.sortEncryptedFieldsOptions.silent)
+async function updateSortFieldsForDocument({ objectId, model, fieldName, fieldValue, sortFieldName }) {
+  const { isSilent, noOfCharsToIncreaseOnSaturation } = model.schema.options.sortEncryptedFieldsOptions;
+  if (!isSilent) {
     console.time(`mongoose-sort-encrypted-field -> updateSortFieldsForDocument() -> objectId: ${objectId}, timeTaken: `);
-  const { predecessorSortId, successorSortId } = await documentsBinarySearch(model, fieldName, fieldValue, sortFieldName, ignoreCases, noOfCharsForSortId);
+  }
+  const { predecessorSortId, successorSortId } = await documentsBinarySearch(model, fieldName, fieldValue, sortFieldName);
   const newSortId = getAverageSortId(predecessorSortId, successorSortId, noOfCharsToIncreaseOnSaturation);
   await model.updateOne({ _id: objectId }, { $set: { [sortFieldName]: newSortId.toString() } });
   const documentsCountWithSameSortId = await model
@@ -154,26 +148,27 @@ async function updateSortFieldsForDocument({
     .count()
     .exec();
   if (documentsCountWithSameSortId > 1) {
-    if (!model.schema.options.sortEncryptedFieldsOptions.silent)
+    if (!isSilent)
       console.log(`mongoose-sort-encrypted-field -> Got collions, retrying... objectId: ${objectId}`);
     // Retrigering sortId generation due to collion
     throw new Error(`mongoose-sort-encrypted-field -> Got collions, retrying... objectId: ${objectId}`);
   }
-  if (!model.schema.options.sortEncryptedFieldsOptions.silent) {
+  if (!isSilent) {
     console.timeEnd(`mongoose-sort-encrypted-field -> updateSortFieldsForDocument() -> objectId: ${objectId}, timeTaken: `);
   }
 }
 
-async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName, ignoreCases, noOfCharsForSortId }) {
-  if (!model.schema.options.sortEncryptedFieldsOptions.silent) {
+async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName }) {
+  const { isSilent, ignoreCases, noOfCharsForSortId } = model.schema.options.sortEncryptedFieldsOptions;
+  if (!isSilent) {
     console.time(
       `mongoose-sort-encrypted-field -> generateSortIdForAllDocuments() -> fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, timeTaken: `
     );
   }
   const documents = await model.find({}, { [fieldName]: 1 }).exec();
   documents.sort((a, b) => {
-    let aValue = a[fieldName] || '';
-    let bValue = b[fieldName] || '';
+    let aValue = a[fieldName] || "";
+    let bValue = b[fieldName] || "";
     aValue = ignoreCases ? aValue.toLowerCase() : aValue;
     bValue = ignoreCases ? bValue.toLowerCase() : bValue;
     return aValue.localeCompare(bValue);
@@ -190,7 +185,7 @@ async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName, 
     await model.updateOne({ _id: documents[i]._id }, { $set: { [sortFieldName]: curr.toString() } });
     curr = curr.add(diff);
   }
-  if (!model.schema.options.sortEncryptedFieldsOptions.silent) {
+  if (!isSilent) {
     console.timeEnd(
       `mongoose-sort-encrypted-field -> generateSortIdForAllDocuments() -> fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, timeTaken: `
     );

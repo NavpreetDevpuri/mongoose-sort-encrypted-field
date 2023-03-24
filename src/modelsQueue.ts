@@ -17,7 +17,7 @@ class ModelsQueue {
       ...REDIS_QUEUE_CLIENT_OPTIONS,
       ...redisQueueClientOptions,
     };
-    const { redis, batchSize, groupVisibilityTimeoutMs, pollingTimeoutMs, consumerCount, redisKeyPrefix } = redisQueueClientOptions;
+    const { redis } = redisQueueClientOptions;
 
     let redisClient = redis;
     if (!(redis instanceof Redis)) {
@@ -25,31 +25,30 @@ class ModelsQueue {
     }
 
     this.client = new RedisQueueClient({
+      ...redisQueueClientOptions,
       redis: redisClient,
-      batchSize,
-      groupVisibilityTimeoutMs,
-      pollingTimeoutMs,
-      consumerCount,
-      redisKeyPrefix,
     });
 
-    this.client.startConsumers({ handleMessage: async function handleMessage({
-      data,
-      context: {
-        lock: { groupId },
+    this.client.startConsumers({
+      handleMessage: async function handleMessage({
+        data,
+        context: {
+          lock: { groupId },
+        },
+      }) {
+        data.model = modelsQueue.groupIdToModelMap[groupId];
+        const { isSilent } = data.model.schema.options.sortEncryptedFieldsOptions;
+        if (!isSilent) {
+          const noOfPendingJobs = (await modelsQueue.client.getMetrics(100)).topMessageGroupsMessageBacklogLength;
+          console.log(`mongoose-sort-encrypted-field -> handleMessage() -> noOfPendingJobs: ${noOfPendingJobs}`);
+        }
+        if (data.generateSortIdForAllDocuments) {
+          await generateSortIdForAllDocuments(data);
+          return;
+        }
+        await updateSortFieldsForDocument(data);
       },
-    }) {
-      data.model = modelsQueue.groupIdToModelMap[groupId];
-      if (!data.model.schema.options.sortEncryptedFieldsOptions.silent) {
-        const noOfPendingJobs = (await modelsQueue.client.getMetrics(100)).topMessageGroupsMessageBacklogLength;
-        console.log(`mongoose-sort-encrypted-field -> handleMessage() -> noOfPendingJobs: ${noOfPendingJobs}`);
-      }
-      if (data.generateSortIdForAllDocuments) {
-        await generateSortIdForAllDocuments(data);
-        return;
-      }
-      await updateSortFieldsForDocument(data);
-    } });
+    });
   }
 
   async addJob(groupId, data) {

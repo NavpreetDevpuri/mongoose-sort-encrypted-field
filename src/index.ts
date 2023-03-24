@@ -10,7 +10,7 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
     ...pluginOptions,
   };
 
-  const { redisQueueClientOptions, ignoreCases, noOfCharsToIncreaseOnSaturation } = sortEncryptedFieldsOptions;
+  const { redisQueueClientOptions } = sortEncryptedFieldsOptions;
 
   const sortFields = {};
   const decrypters = {};
@@ -42,8 +42,6 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
         fieldName,
         fieldValue: doc[fieldName],
         sortFieldName,
-        ignoreCases,
-        noOfCharsToIncreaseOnSaturation,
       });
     }
     next();
@@ -81,8 +79,6 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
             fieldName,
             fieldValue,
             sortFieldName,
-            ignoreCases,
-            noOfCharsToIncreaseOnSaturation,
           });
         }
       }
@@ -123,8 +119,6 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
               fieldName,
               fieldValue,
               sortFieldName,
-              ignoreCases,
-              noOfCharsToIncreaseOnSaturation,
             });
           }
         }
@@ -136,7 +130,7 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
 
 function getModelWithSortEncryptedFieldsPlugin(documentName, schema, pluginOptions) {
   schema.plugin(sortEncryptedFields, pluginOptions);
-  const { ignoreCases, noOfCharsForSortId, noOfCharsToIncreaseOnSaturation, sortFields, modelsQueue, revaluateAllThreshold, revaluateAllCountThreshold } =
+  const { ignoreCases, noOfCharsForSortId, sortFields, modelsQueue, revaluateAllThreshold, revaluateAllCountThreshold } =
     schema.options.sortEncryptedFieldsOptions;
   const model = mongoose.model(documentName, schema);
 
@@ -176,9 +170,6 @@ function getModelWithSortEncryptedFieldsPlugin(documentName, schema, pluginOptio
                 fieldName,
                 fieldValue,
                 sortFieldName,
-                ignoreCases,
-                noOfCharsForSortId,
-                noOfCharsToIncreaseOnSaturation,
               });
             }
           }

@@ -100,7 +100,7 @@ documents = [
 4. `ignoreCases?: boolean;` default: `false` <br>
    To ignore cases.
 
-5. `silent?: boolean;` default: `false` <br>
+5. `isSilent?: boolean;` default: `false` <br>
    Flag to turn on/off console info logs
 
 6. `revaluateAllThreshold?: number;` default: `0.5` <br>
