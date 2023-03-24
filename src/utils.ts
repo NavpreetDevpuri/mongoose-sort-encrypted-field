@@ -1,14 +1,14 @@
 const Base2N = require("@navpreetdevpuri/base-2-n");
 
-async function documentsBinarySearch(model, fieldName, fieldValue, sortFieldName, ignoreCases) {
+async function documentsBinarySearch(model, fieldName, fieldValue, sortFieldName, ignoreCases, noOfCharsForSortId) {
   const n = await model
     .findOne({ [sortFieldName]: { $ne: null } })
     .count()
     .exec();
   if (n === 0) {
     return {
-      predecessorSortId: null,
-      successorSortId: new Base2N("\0").toString(),
+      predecessorSortId: new Base2N("\0", noOfCharsForSortId).toString(),
+      successorSortId: "".padEnd(noOfCharsForSortId, "\uffff"),
     };
   }
   let start = 0;
@@ -115,7 +115,7 @@ function getAverageSortId(predecessorSortId, successorSortId, noOfCharsToIncreas
   let predecessorNumber;
   let successorNumber;
 
-  if (predecessorSortId.length == predecessorSortId.length) {
+  if (predecessorSortId.length === successorSortId.length) {
     predecessorNumber = new Base2N(predecessorSortId);
     successorNumber = new Base2N(successorSortId);
     const averageNumber = predecessorNumber.average(successorNumber);
@@ -143,11 +143,12 @@ async function updateSortFieldsForDocument({
   fieldValue,
   sortFieldName,
   ignoreCases,
+  noOfCharsForSortId,
   noOfCharsToIncreaseOnSaturation,
 }) {
   if (!model.schema.options.sortEncryptedFieldsOptions.silent)
     console.time(`mongoose-sort-encrypted-field -> updateSortFieldsForDocument() -> objectId: ${objectId}, timeTaken: `);
-  const { predecessorSortId, successorSortId } = await documentsBinarySearch(model, fieldName, fieldValue, sortFieldName, ignoreCases);
+  const { predecessorSortId, successorSortId } = await documentsBinarySearch(model, fieldName, fieldValue, sortFieldName, ignoreCases, noOfCharsForSortId);
   const newSortId = getAverageSortId(predecessorSortId, successorSortId, noOfCharsToIncreaseOnSaturation);
   await model.updateOne({ _id: objectId }, { $set: { [sortFieldName]: newSortId.toString() } });
   const documentsCountWithSameSortId = await model
@@ -164,7 +165,7 @@ async function updateSortFieldsForDocument({
     console.timeEnd(`mongoose-sort-encrypted-field -> updateSortFieldsForDocument() -> objectId: ${objectId}, timeTaken: `);
 }
 
-async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName, ignoreCases }) {
+async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName, ignoreCases, noOfCharsForSortId }) {
   if (!model.schema.options.sortEncryptedFieldsOptions.silent)
     console.time(
       `mongoose-sort-encrypted-field -> generateSortIdForAllDocuments() -> fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, timeTaken: `
@@ -182,11 +183,11 @@ async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName, 
   });
   const n = documents.length;
   const log2n = Math.round(Math.log2(n)) + 1;
-  let diff = new Base2N("".padEnd(50, "\uffff"));
+  let diff = new Base2N("".padEnd(noOfCharsForSortId, "\uffff"));
   for (let i = 0; i < log2n; i++) {
     diff = diff.half();
   }
-  let curr = new Base2N("\0");
+  let curr = new Base2N("\0", noOfCharsForSortId);
   curr = curr.add(diff);
   for (let i = 0; i < n; i += 1) {
     await model.updateOne({ _id: documents[i]._id }, { $set: { [sortFieldName]: curr.toString() } });

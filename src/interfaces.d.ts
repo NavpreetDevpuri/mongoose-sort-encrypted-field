@@ -3,7 +3,7 @@ interface RedisQueueClientOptions {
   batchSize: number;
   groupVisibilityTimeoutMs: number;
   pollingTimeoutMs: number;
-  consumerCount: 1;
+  consumerCount: number;
   redisKeyPrefix: "mongoose-sort-encrypted-field";
 }
 
@@ -11,6 +11,7 @@ interface PluginOptions {
   redisQueueClientOptions?: RedisQueueClientOptions;
   ignoreCases?: boolean;
   silent?: boolean;
+  noOfCharsForSortId?: number;
   noOfCharsToIncreaseOnSaturation?: number;
   revaluateAllThreshold?: number;
   revaluateAllCountThreshold?: number;

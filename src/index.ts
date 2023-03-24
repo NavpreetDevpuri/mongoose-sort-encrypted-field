@@ -150,7 +150,6 @@ function getModelWithSortEncryptedFieldsPlugin(documentName, schema, pluginOptio
     .count()
     .exec()
     .then(async (noOfTotalDocuments) => {
-      const {} = model.schema.options;
       for (const fieldName in sortFields) {
         const sortFieldName = sortFields[fieldName];
         const noOfDocumentsWithoutSortId = await model
