@@ -118,7 +118,7 @@ function getAverageSortId(predecessorSortId, successorSortId, noOfCharsToIncreas
     predecessorNumber = new Base2N(predecessorSortId, 16);
     successorNumber = new Base2N(successorSortId, 16);
     const averageNumber = predecessorNumber.average(successorNumber);
-    if (averageNumber.toString() != predecessorNumber.toString()) {
+    if (averageNumber.toString() !== predecessorNumber.toString()) {
       return averageNumber.toString();
     }
     predecessorNumber = new Base2N(predecessorSortId.padEnd(averageNumber.length + noOfCharsToIncreaseOnSaturation, "\0"), 16);
