@@ -76,7 +76,7 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
         const document = await this.model.findOne(this.getFilter(), { _id: 1, [fieldName]: 1 }).exec();
         if (document) {
           const fieldValue = document[fieldName];
-          await modelsQueue.addJob(`${this.modelName.model}${sortFieldName}`, {
+          await modelsQueue.addJob(`${this.model.modelName}${sortFieldName}`, {
             objectId: document._id,
             fieldName,
             fieldValue,
