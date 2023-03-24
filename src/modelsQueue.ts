@@ -2,8 +2,8 @@ const { RedisQueueClient } = require("redis-ordered-queue");
 const Redis = require("ioredis");
 const defaultRedisKeyPrefix = "mongoose-sort-encrypted-field";
 
-const { REDIS_QUEUE_CLIENT_OPTIONS } = require('./constants');
-const { updateSortFieldsForDocument, generateSortIdForAllDocuments } = require('./utils');
+const { REDIS_QUEUE_CLIENT_OPTIONS } = require("./constants");
+const { updateSortFieldsForDocument, generateSortIdForAllDocuments } = require("./utils");
 
 let modelsQueue;
 class ModelsQueue {

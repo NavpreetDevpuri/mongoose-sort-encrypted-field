@@ -1,17 +1,29 @@
-name: Publish Package to npmjs
-on: push
+name: Publish on version change
+
+on:
+  push:
+    branches:
+      - main
+
 jobs:
-  build:
+  publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      # Setup .npmrc file to publish to npm
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18.x'
-          registry-url: 'https://registry.npmjs.org'
-      - run: npm install --only=dev
-      - run: npm run build
-      - run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        registry-url: 'https://registry.npmjs.org'
+    - name: Get current version
+      id: get_version
+      run: echo ::set-output name=version::$(node -p "require('./package.json').version")
+    - name: Check version and publish
+      if: github.event_name == 'push' && contains(github.event.head_commit.message, 'Bump version')
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+      run: |
+        if [ "${{ steps.get_version.outputs.version }}" != "$(node -p "require('./package.json').version")" ]; then
+          npm publish
+        else
+          echo "Version has not changed. Skipping publish."
+        fi
