@@ -9,25 +9,25 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-node@v3
-        with:
-          node-version: '18.x'
-          registry-url: 'https://registry.npmjs.org'
-    - name: Get current version
-      id: get_version
-      run: echo "::set-output name=version::$(node -p 'require(`./package.json`).version')"
-    - name: Set version environment variable
-      env:
-        VERSION: ${{ steps.get_version.outputs.version }}
-      run: echo "VERSION=${{ env.VERSION }}" >> $GITHUB_ENV
-    - name: Check version and publish
-      if: github.event_name == 'push' && contains(github.event.head_commit.message, 'Bump version')
-      env:
-        NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
-      run: |
-        if [ "${{ env.VERSION }}" != "$(node -p "require('./package.json').version")" ]; then
-          npm publish
-        else
-          echo "Version has not changed. Skipping publish."
-        fi
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v3
+          with:
+            node-version: '18.x'
+            registry-url: 'https://registry.npmjs.org'
+      - name: Get current version
+        id: get_version
+        run: echo "::set-output name=version::$(node -p 'require(`./package.json`).version')"
+      - name: Set version environment variable
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: echo "VERSION=${{ env.VERSION }}" >> $GITHUB_ENV
+      - name: Check version and publish
+        if: github.event_name == 'push' && contains(github.event.head_commit.message, 'Bump version')
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+        run: |
+          if [ "${{ env.VERSION }}" != "$(node -p "require('./package.json').version")" ]; then
+            npm publish
+          else
+            echo "Version has not changed. Skipping publish."
+          fi
