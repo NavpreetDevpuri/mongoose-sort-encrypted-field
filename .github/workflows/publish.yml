@@ -16,20 +16,14 @@ jobs:
         with:
           node-version: '18.x'
           registry-url: 'https://registry.npmjs.org'
-      - name: Get current version
-        id: get_version
-        run: echo "::set-output name=version::$(node -p 'require(`./package.json`).version')"
-      - name: Set version environment variable
-        env:
-          VERSION: ${{ steps.get_version.outputs.version }}
-        run: echo "VERSION=${{ env.VERSION }}" >> $GITHUB_ENV
       - name: Check version and publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
         run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version");
           git reset --hard HEAD~1;
           LAST_VERSION=$(node -p "require('./package.json').version");
-          if [ "${{ env.VERSION }}" != "$LAST_VERSION" ] && [ "${{ env.VERSION }}" != "$LAST_COMMIT_VERSION" ]; then
+          if [ "$CURRENT_VERSION" != "$LAST_VERSION" ]; then
             npm publish
           else
             echo "Version has not changed. Skipping publish."
