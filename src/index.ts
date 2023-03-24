@@ -1,9 +1,8 @@
 // mongoose is not in package.json to avoid compatibility issues with npm package user
 const mongoose = require("mongoose");
 
-const { REDIS_QUEUE_CLIENT_OPTIONS, PLUGIN_OPTIONS } = require("./constants");
+const { PLUGIN_OPTIONS } = require("./constants");
 const { getModelsQueue } = require("./modelsQueue");
-const { generateSortIdForAllDocuments } = require("./utils");
 
 function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
   const sortEncryptedFieldsOptions: SortEncryptedFieldsOptions = {
