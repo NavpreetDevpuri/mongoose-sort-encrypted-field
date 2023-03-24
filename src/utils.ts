@@ -136,8 +136,8 @@ function getAverageSortId(predecessorSortId, successorSortId, noOfCharsToIncreas
 }
 
 async function updateSortFieldsForDocument({ objectId, model, fieldName, fieldValue, sortFieldName }) {
-  const { isSilent, noOfCharsToIncreaseOnSaturation } = model.schema.options.sortEncryptedFieldsOptions;
-  if (!isSilent) {
+  const { silent, noOfCharsToIncreaseOnSaturation } = model.schema.options.sortEncryptedFieldsOptions;
+  if (!silent) {
     console.time(`mongoose-sort-encrypted-field -> updateSortFieldsForDocument() -> objectId: ${objectId}, timeTaken: `);
   }
   const { predecessorSortId, successorSortId } = await documentsBinarySearch(model, fieldName, fieldValue, sortFieldName);
@@ -148,19 +148,19 @@ async function updateSortFieldsForDocument({ objectId, model, fieldName, fieldVa
     .count()
     .exec();
   if (documentsCountWithSameSortId > 1) {
-    if (!isSilent)
+    if (!silent)
       console.log(`mongoose-sort-encrypted-field -> Got collions, retrying... objectId: ${objectId}`);
     // Retrigering sortId generation due to collion
     throw new Error(`mongoose-sort-encrypted-field -> Got collions, retrying... objectId: ${objectId}`);
   }
-  if (!isSilent) {
+  if (!silent) {
     console.timeEnd(`mongoose-sort-encrypted-field -> updateSortFieldsForDocument() -> objectId: ${objectId}, timeTaken: `);
   }
 }
 
 async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName }) {
-  const { isSilent, ignoreCases, noOfCharsForSortId } = model.schema.options.sortEncryptedFieldsOptions;
-  if (!isSilent) {
+  const { silent, ignoreCases, noOfCharsForSortId } = model.schema.options.sortEncryptedFieldsOptions;
+  if (!silent) {
     console.time(
       `mongoose-sort-encrypted-field -> generateSortIdForAllDocuments() -> fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, timeTaken: `
     );
@@ -185,7 +185,7 @@ async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName }
     await model.updateOne({ _id: documents[i]._id }, { $set: { [sortFieldName]: curr.toString() } });
     curr = curr.add(diff);
   }
-  if (!isSilent) {
+  if (!silent) {
     console.timeEnd(
       `mongoose-sort-encrypted-field -> generateSortIdForAllDocuments() -> fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, timeTaken: `
     );

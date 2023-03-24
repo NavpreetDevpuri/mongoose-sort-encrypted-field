@@ -37,8 +37,8 @@ class ModelsQueue {
         },
       }) {
         data.model = modelsQueue.groupIdToModelMap[groupId];
-        const { isSilent } = data.model.schema.options.sortEncryptedFieldsOptions;
-        if (!isSilent) {
+        const { silent } = data.model.schema.options.sortEncryptedFieldsOptions;
+        if (!silent) {
           const noOfPendingJobs = (await modelsQueue.client.getMetrics(100)).topMessageGroupsMessageBacklogLength;
           console.log(`mongoose-sort-encrypted-field -> handleMessage() -> noOfPendingJobs: ${noOfPendingJobs}`);
         }
