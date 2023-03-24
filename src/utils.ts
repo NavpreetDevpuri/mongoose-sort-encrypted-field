@@ -10,7 +10,7 @@ async function documentsBinarySearch(model, fieldName, fieldValue, sortFieldName
     .exec();
   if (n === 0) {
     return {
-      predecessorSortId: new Base2N("\0", noOfCharsForSortId).toString(),
+      predecessorSortId: new Base2N("\0", 16, noOfCharsForSortId).toString(),
       successorSortId: "".padEnd(noOfCharsForSortId, "\uffff"),
     };
   }
@@ -115,22 +115,22 @@ function getAverageSortId(predecessorSortId, successorSortId, noOfCharsToIncreas
   let successorNumber;
 
   if (predecessorSortId.length === successorSortId.length) {
-    predecessorNumber = new Base2N(predecessorSortId);
-    successorNumber = new Base2N(successorSortId);
+    predecessorNumber = new Base2N(predecessorSortId, 16);
+    successorNumber = new Base2N(successorSortId, 16);
     const averageNumber = predecessorNumber.average(successorNumber);
     if (averageNumber.toString() != predecessorNumber.toString()) {
       return averageNumber.toString();
     }
-    predecessorNumber = new Base2N(predecessorSortId.padEnd(averageNumber.length + noOfCharsToIncreaseOnSaturation, "\0"));
-    successorNumber = new Base2N(successorSortId.padEnd(averageNumber.length + noOfCharsToIncreaseOnSaturation, "\0"));
+    predecessorNumber = new Base2N(predecessorSortId.padEnd(averageNumber.length + noOfCharsToIncreaseOnSaturation, "\0"), 16);
+    successorNumber = new Base2N(successorSortId.padEnd(averageNumber.length + noOfCharsToIncreaseOnSaturation, "\0"), 16);
     return predecessorNumber.average(successorNumber).toString();
   }
 
   const bigger = predecessorSortId.length > successorSortId.length ? predecessorSortId : successorSortId;
   const smaller = successorSortId.length > predecessorSortId.length ? predecessorSortId : successorSortId;
 
-  const biggerNumber = new Base2N(bigger);
-  const smallerNumber = new Base2N(smaller.padEnd(bigger.length, "\0"));
+  const biggerNumber = new Base2N(bigger, 16);
+  const smallerNumber = new Base2N(smaller.padEnd(bigger.length, "\0"), 16);
 
   return biggerNumber.average(smallerNumber).toString();
 }
@@ -175,11 +175,11 @@ async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName }
   });
   const n = documents.length;
   const log2n = Math.round(Math.log2(n)) + 1;
-  let diff = new Base2N("".padEnd(noOfCharsForSortId, "\uffff"));
+  let diff = new Base2N("".padEnd(noOfCharsForSortId, "\uffff"), 16);
   for (let i = 0; i < log2n; i += 1) {
     diff = diff.half();
   }
-  let curr = new Base2N("\0", noOfCharsForSortId);
+  let curr = new Base2N("\0", 16, noOfCharsForSortId);
   curr = curr.add(diff);
   for (let i = 0; i < n; i += 1) {
     await model.updateOne({ _id: documents[i]._id }, { $set: { [sortFieldName]: curr.toString() } });
