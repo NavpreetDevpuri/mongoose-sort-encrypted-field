@@ -41,7 +41,7 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
       await modelsQueue.addJob(`${this.constructor.modelName}${sortFieldName}`, {
         objectId: doc._id,
         fieldName,
-        fieldValue: ignoreCases ? doc[fieldName].toLowerCase() : doc[fieldName],
+        fieldValue: doc[fieldName],
         sortFieldName,
         ignoreCases,
         noOfCharsToIncreaseOnSaturation,
@@ -80,7 +80,7 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
           await modelsQueue.addJob(`${this.modelName.model}${sortFieldName}`, {
             objectId: document._id,
             fieldName,
-            fieldValue: ignoreCases ? fieldValue.toLowerCase() : fieldValue,
+            fieldValue,
             sortFieldName,
             ignoreCases,
             noOfCharsToIncreaseOnSaturation,
@@ -122,7 +122,7 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
             await modelsQueue.addJob(`${this.model.modelName}${sortFieldName}`, {
               objectId: documents[i]._id,
               fieldName,
-              fieldValue: ignoreCases ? fieldValue.toLowerCase() : fieldValue,
+              fieldValue,
               sortFieldName,
               ignoreCases,
               noOfCharsToIncreaseOnSaturation,

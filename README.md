@@ -41,6 +41,35 @@ Then we can sort all records by email from the 'emailSort' field. For performanc
 const sortedUsers = await User.find({}).sort({ emailSort: 1 }).exec();
 ```
 
+Note: For values equal to `null` or `undefined`, It consider those as `''` empty strings to support proper sorting if we do multiple fields sorting.
+Example:
+
+```javascript
+// by default mongodb/javascript sort those as follow
+documents = [
+  { firstName: "a", middleName: "", lastName: "b" },
+  { firstName: "a", middleName: "b", lastName: "b" },
+  { firstName: "a", middleName: "b", lastName: "b" },
+  { firstName: "a", middleName: null, lastName: "b" },
+  { firstName: "a", middleName: undefined, lastName: "b" },
+]; 
+
+// If we sort as { $sort: { firstName: 1, middleName: 1, lastName: 1 } }
+// For full name then it will be wrong according to default behaviour
+["aa", "abb", "ab", "ab"]
+
+// So, in our plugin we are doing as follow
+documents = [
+  { firstName: "a", middleName: "", lastName: "b" },
+  { firstName: "a", middleName: null, lastName: "b" },
+  { firstName: "a", middleName: undefined, lastName: "b" },
+  { firstName: "a", middleName: "b", lastName: "b" },
+  { firstName: "a", middleName: "b", lastName: "b" },
+];
+// Now it is corrent
+["aa", "ab", "ab", "abb"]
+```
+
 ### pluginOptions:
 
 1. `redisQueueClientOptions: RedisQueueClientOptions;` default:

@@ -1,6 +1,8 @@
 const Base2N = require("@navpreetdevpuri/base-2-n");
 
 async function documentsBinarySearch(model, fieldName, fieldValue, sortFieldName, ignoreCases, noOfCharsForSortId) {
+  fieldValue = fieldValue || '';
+  fieldValue = ignoreCases ? fieldValue.toLowerCase() : fieldValue;
   const n = await model
     .findOne({ [sortFieldName]: { $ne: null } })
     .count()
@@ -27,7 +29,6 @@ async function documentsBinarySearch(model, fieldName, fieldValue, sortFieldName
   let startValue;
   let midValue;
   let endValue;
-  fieldValue = ignoreCases ? fieldValue.toLowerCase() : fieldValue;
 
   while (start <= end) {
     const mid = Math.ceil((start + end) / 2);
@@ -37,9 +38,9 @@ async function documentsBinarySearch(model, fieldName, fieldValue, sortFieldName
       .skip(mid)
       .exec();
 
-    startValue = String(startDoc[fieldName]);
-    midValue = String(midDoc[fieldName]);
-    endValue = String(endDoc[fieldName]);
+    startValue = startDoc[fieldName] || '';
+    midValue = midDoc[fieldName] || '';
+    endValue = endDoc[fieldName] || '';
     startValue = ignoreCases ? startValue.toLowerCase() : startValue;
     midValue = ignoreCases ? midValue.toLowerCase() : midValue;
     endValue = ignoreCases ? endValue.toLowerCase() : endValue;
@@ -94,12 +95,9 @@ async function documentsBinarySearch(model, fieldName, fieldValue, sortFieldName
       .exec();
   }
 
-  let predecessorDoc = endDoc;
-  const successorDoc = startDoc;
-
   return {
-    predecessorSortId: predecessorDoc[sortFieldName],
-    successorSortId: successorDoc[sortFieldName],
+    predecessorSortId: endDoc[sortFieldName],
+    successorSortId: startDoc[sortFieldName],
   };
 }
 
@@ -172,11 +170,8 @@ async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName, 
     );
   const documents = await model.find({}, { [fieldName]: 1 }).exec();
   documents.sort((a, b) => {
-    let aValue = a[fieldName];
-    let bValue = b[fieldName];
-    if (!aValue && !bValue) return 0;
-    if (!aValue) return -1;
-    if (!bValue) return 1;
+    let aValue = a[fieldName] || '';
+    let bValue = b[fieldName] || '';
     aValue = ignoreCases ? aValue.toLowerCase() : aValue;
     bValue = ignoreCases ? bValue.toLowerCase() : bValue;
     return aValue.localeCompare(bValue);
