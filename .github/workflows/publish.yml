@@ -25,6 +25,8 @@ jobs:
           LAST_VERSION=$(node -p "require('./package.json').version");
           if [ "$CURRENT_VERSION" != "$LAST_VERSION" ]; then
             git checkout main;
+            npm install --only=dev;
+            npm run build;
             npm publish;
           else
             echo "Version has not changed. Skipping publish. CURRENT_VERSION: $CURRENT_VERSION, LAST_VERSION: $LAST_VERSION";
