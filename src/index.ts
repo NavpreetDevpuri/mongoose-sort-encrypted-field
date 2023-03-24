@@ -136,7 +136,7 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
 
 function getModelWithSortEncryptedFieldsPlugin(documentName, schema, pluginOptions) {
   schema.plugin(sortEncryptedFields, pluginOptions);
-  const { ignoreCases, noOfCharsToIncreaseOnSaturation, sortFields, modelsQueue, revaluateAllThreshold, revaluateAllCountThreshold } =
+  const { ignoreCases, noOfCharsForSortId, noOfCharsToIncreaseOnSaturation, sortFields, modelsQueue, revaluateAllThreshold, revaluateAllCountThreshold } =
     schema.options.sortEncryptedFieldsOptions;
   const model = mongoose.model(documentName, schema);
 
@@ -162,6 +162,7 @@ function getModelWithSortEncryptedFieldsPlugin(documentName, schema, pluginOptio
             fieldName,
             sortFieldName,
             ignoreCases,
+            noOfCharsForSortId,
           });
         } else {
           const documents = await model
@@ -176,6 +177,7 @@ function getModelWithSortEncryptedFieldsPlugin(documentName, schema, pluginOptio
                 fieldValue,
                 sortFieldName,
                 ignoreCases,
+                noOfCharsForSortId,
                 noOfCharsToIncreaseOnSaturation,
               });
             }
