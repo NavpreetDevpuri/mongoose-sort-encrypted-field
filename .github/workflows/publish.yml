@@ -24,6 +24,7 @@ jobs:
           git reset --hard HEAD~1;
           LAST_VERSION=$(node -p "require('./package.json').version");
           if [ "$CURRENT_VERSION" != "$LAST_VERSION" ]; then
+            git reset --hard origin/HEAD~0
             npm publish
           else
             echo "Version has not changed. Skipping publish."
