@@ -138,7 +138,7 @@ function getAverageSortId(predecessorSortId, successorSortId, noOfCharsToIncreas
 async function updateSortFieldsForDocument({ objectId, model, fieldName, fieldValue, sortFieldName }) {
   const { silent, noOfCharsToIncreaseOnSaturation } = model.schema.options.sortEncryptedFieldsOptions;
   if (!silent) {
-    console.time(`mongoose-sort-encrypted-field -> updateSortFieldsForDocument() -> objectId: ${objectId}, timeTaken: `);
+    console.time(`mongoose-sort-encrypted-field -> updateSortFieldsForDocument() -> objectId: ${objectId}, fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, timeTaken: `);
   }
   const { predecessorSortId, successorSortId } = await documentsBinarySearch(model, fieldName, fieldValue, sortFieldName);
   const newSortId = getAverageSortId(predecessorSortId, successorSortId, noOfCharsToIncreaseOnSaturation);
@@ -149,12 +149,12 @@ async function updateSortFieldsForDocument({ objectId, model, fieldName, fieldVa
     .exec();
   if (documentsCountWithSameSortId > 1) {
     if (!silent)
-      console.log(`mongoose-sort-encrypted-field -> Got collions, retrying... objectId: ${objectId}`);
+      console.log(`mongoose-sort-encrypted-field -> objectId: ${objectId} fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, Got collions, retrying...`);
     // Retrigering sortId generation due to collion
-    throw new Error(`mongoose-sort-encrypted-field -> Got collions, retrying... objectId: ${objectId}`);
+    throw new Error(`mongoose-sort-encrypted-field -> objectId: ${objectId} fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, Got collions, retrying...`);
   }
   if (!silent) {
-    console.timeEnd(`mongoose-sort-encrypted-field -> updateSortFieldsForDocument() -> objectId: ${objectId}, timeTaken: `);
+    console.timeEnd(`mongoose-sort-encrypted-field -> updateSortFieldsForDocument() -> objectId: ${objectId}, fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, timeTaken: `);
   }
 }
 
@@ -162,7 +162,7 @@ async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName }
   const { silent, ignoreCases, noOfCharsForSortId } = model.schema.options.sortEncryptedFieldsOptions;
   if (!silent) {
     console.time(
-      `mongoose-sort-encrypted-field -> generateSortIdForAllDocuments() -> fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, timeTaken: `
+      `mongoose-sort-encrypted-field -> generateSortIdForAllDocuments() -> fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, sortFieldName: ${sortFieldName}, timeTaken: `
     );
   }
   const documents = await model.find({}, { [fieldName]: 1 }).exec();
