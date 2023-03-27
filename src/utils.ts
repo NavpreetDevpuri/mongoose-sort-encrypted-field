@@ -40,14 +40,15 @@ async function generateSortIdUsingBinarySearch(model, fieldName, fieldValue, sor
     startValue = ignoreCases ? startValue.toLowerCase() : startValue;
     midValue = ignoreCases ? midValue.toLowerCase() : midValue;
     endValue = ignoreCases ? endValue.toLowerCase() : endValue;
-
-    if (fieldValue < midValue) {
+    if (fieldValue === midValue) {
+      return midDoc[sortFieldName];
+    } else if (fieldValue < midValue) {
       end = mid - 1;
       if (end < 0) {
         break;
       }
       endDoc = await getDocument(model, fieldName, sortFieldName, end);
-    } else if (midValue <= fieldValue) {
+    } else if (midValue < fieldValue) {
       start = mid + 1;
       if (start === n) {
         break;
@@ -140,10 +141,11 @@ async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName }
     diff = diff.half();
   }
   let curr = new Base2N("\0", 16, noOfCharsForSortId);
-  curr = curr.add(diff);
   for (let i = 0; i < n; i += 1) {
+    if (i === 0 || documents[i - 1][fieldName] !== documents[i][fieldName]) {
+      curr = curr.add(diff);
+    }
     await model.updateOne({ _id: documents[i]._id }, { $set: { [sortFieldName]: curr.toString() } });
-    curr = curr.add(diff);
   }
   if (!silent) {
     console.timeEnd(
