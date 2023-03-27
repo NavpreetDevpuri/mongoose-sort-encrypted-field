@@ -86,7 +86,7 @@ documents = [
    ```
 
    <br>
-    Any options which we can pass to [redis-ordered-queue](<(https://www.npmjs.com/package/redis-ordered-queue)>) constructor and redis options can be an instance of [ioredis](https://www.npmjs.com/package/ioredis) or any value that we can pass to ioredis constructor
+    Any options which we can pass to [redis-ordered-queue](https://www.npmjs.com/package/redis-ordered-queue) constructor and redis options can be an instance of [ioredis](https://www.npmjs.com/package/ioredis) or any value that we can pass to ioredis constructor
 
 2. `noOfCharsForSortId?: number` default: `50`
    Number of characters for sort ID, bigger number is mathematically better.
