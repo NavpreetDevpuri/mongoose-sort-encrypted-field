@@ -1,7 +1,15 @@
 const Base2N = require("@navpreetdevpuri/base-2-n");
 
-async function documentsBinarySearch(model, fieldName, fieldValue, sortFieldName) {
-  const { ignoreCases, noOfCharsForSortId } = model.schema.options.sortEncryptedFieldsOptions;
+async function getDocument(model, fieldName, sortFieldName, skip) {
+  return model
+    .findOne({ [sortFieldName]: { $ne: null } }, { [fieldName]: 1, [sortFieldName]: 1 })
+    .sort({ [sortFieldName]: 1 })
+    .skip(skip)
+    .exec();
+}
+
+async function generateSortIdUsingBinarySearch(model, fieldName, fieldValue, sortFieldName) {
+  const { ignoreCases, noOfCharsForSortId, noOfCharsToIncreaseOnSaturation } = model.schema.options.sortEncryptedFieldsOptions;
   fieldValue = fieldValue || "";
   fieldValue = ignoreCases ? fieldValue.toLowerCase() : fieldValue;
   const n = await model
@@ -9,35 +17,22 @@ async function documentsBinarySearch(model, fieldName, fieldValue, sortFieldName
     .count()
     .exec();
   if (n === 0) {
-    return {
-      predecessorSortId: new Base2N("\0", 16, noOfCharsForSortId).toString(),
-      successorSortId: "".padEnd(noOfCharsForSortId, "\uffff"),
-    };
+    const predecessorSortId = new Base2N("\0", 16, noOfCharsForSortId).toString();
+    const successorSortId = "".padEnd(noOfCharsForSortId, "\uffff");
+    return getAverageSortId(predecessorSortId, successorSortId, noOfCharsToIncreaseOnSaturation);
   }
   let start = 0;
   let end = n - 1;
-  let startDoc = await model
-    .findOne({ [sortFieldName]: { $ne: null } }, { [fieldName]: 1, [sortFieldName]: 1 })
-    .sort({ [sortFieldName]: 1 })
-    .skip(start)
-    .exec();
+  let startDoc = await getDocument(model, fieldName, sortFieldName, start);
   let midDoc;
-  let endDoc = await model
-    .findOne({ [sortFieldName]: { $ne: null } }, { [fieldName]: 1, [sortFieldName]: 1 })
-    .sort({ [sortFieldName]: 1 })
-    .skip(end)
-    .exec();
+  let endDoc = await getDocument(model, fieldName, sortFieldName, end);
   let startValue;
   let midValue;
   let endValue;
 
   while (start <= end) {
-    const mid = Math.ceil((start + end) / 2);
-    midDoc = await model
-      .findOne({ [sortFieldName]: { $ne: null } }, { [fieldName]: 1, [sortFieldName]: 1 })
-      .sort({ [sortFieldName]: 1 })
-      .skip(mid)
-      .exec();
+    const mid = Math.floor((start + end) / 2);
+    midDoc = await getDocument(model, fieldName, sortFieldName, mid);
 
     startValue = startDoc[fieldName] || "";
     midValue = midDoc[fieldName] || "";
@@ -48,58 +43,30 @@ async function documentsBinarySearch(model, fieldName, fieldValue, sortFieldName
 
     if (fieldValue < midValue) {
       end = mid - 1;
-      if (end <= 0) {
+      if (end < 0) {
         break;
       }
-      endDoc = await model
-        .findOne({ [sortFieldName]: { $ne: null } }, { [fieldName]: 1, [sortFieldName]: 1 })
-        .sort({ [sortFieldName]: 1 })
-        .skip(end)
-        .exec();
+      endDoc = await getDocument(model, fieldName, sortFieldName, end);
     } else if (midValue <= fieldValue) {
       start = mid + 1;
       if (start === n) {
         break;
       }
-      startDoc = await model
-        .findOne({ [sortFieldName]: { $ne: null } }, { [fieldName]: 1, [sortFieldName]: 1 })
-        .sort({ [sortFieldName]: 1 })
-        .skip(start)
-        .exec();
+      startDoc = await getDocument(model, fieldName, sortFieldName, start);
     }
   }
 
   if (start === 0) {
-    return {
-      predecessorSortId: null,
-      successorSortId: startDoc[sortFieldName],
-    };
+    return getAverageSortId(null, startDoc[sortFieldName], noOfCharsToIncreaseOnSaturation);
   }
 
   if (start === n) {
-    startDoc = await model
-      .findOne({ [sortFieldName]: { $ne: null } }, { [sortFieldName]: 1 })
-      .sort({ [sortFieldName]: 1 })
-      .skip(start - 1)
-      .exec();
-    return {
-      predecessorSortId: startDoc[sortFieldName],
-      successorSortId: null,
-    };
+    startDoc = await getDocument(model, fieldName, sortFieldName, start - 1);
+    return getAverageSortId(startDoc[sortFieldName], null, noOfCharsToIncreaseOnSaturation);
   }
 
-  if (start === end) {
-    endDoc = await model
-      .findOne({ [sortFieldName]: { $ne: null } }, { [fieldName]: 1, [sortFieldName]: 1 })
-      .sort({ [sortFieldName]: 1 })
-      .skip(start - 1)
-      .exec();
-  }
-
-  return {
-    predecessorSortId: endDoc[sortFieldName],
-    successorSortId: startDoc[sortFieldName],
-  };
+  endDoc = await getDocument(model, fieldName, sortFieldName, start - 1);
+  return getAverageSortId(endDoc[sortFieldName], startDoc[sortFieldName], noOfCharsToIncreaseOnSaturation);
 }
 
 function getAverageSortId(predecessorSortId, successorSortId, noOfCharsToIncreaseOnSaturation) {
@@ -138,23 +105,16 @@ function getAverageSortId(predecessorSortId, successorSortId, noOfCharsToIncreas
 async function updateSortFieldsForDocument({ objectId, model, fieldName, fieldValue, sortFieldName }) {
   const { silent, noOfCharsToIncreaseOnSaturation } = model.schema.options.sortEncryptedFieldsOptions;
   if (!silent) {
-    console.time(`mongoose-sort-encrypted-field -> updateSortFieldsForDocument() -> objectId: ${objectId}, fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, timeTaken: `);
+    console.time(
+      `mongoose-sort-encrypted-field -> updateSortFieldsForDocument() -> objectId: ${objectId}, fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, timeTaken: `
+    );
   }
-  const { predecessorSortId, successorSortId } = await documentsBinarySearch(model, fieldName, fieldValue, sortFieldName);
-  const newSortId = getAverageSortId(predecessorSortId, successorSortId, noOfCharsToIncreaseOnSaturation);
+  const newSortId = await generateSortIdUsingBinarySearch(model, fieldName, fieldValue, sortFieldName);
   await model.updateOne({ _id: objectId }, { $set: { [sortFieldName]: newSortId.toString() } });
-  const documentsCountWithSameSortId = await model
-    .find({ [sortFieldName]: newSortId.toString() })
-    .count()
-    .exec();
-  if (documentsCountWithSameSortId > 1) {
-    if (!silent)
-      console.log(`mongoose-sort-encrypted-field -> objectId: ${objectId} fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, Got collions, retrying...`);
-    // Retrigering sortId generation due to collion
-    throw new Error(`mongoose-sort-encrypted-field -> objectId: ${objectId} fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, Got collions, retrying...`);
-  }
   if (!silent) {
-    console.timeEnd(`mongoose-sort-encrypted-field -> updateSortFieldsForDocument() -> objectId: ${objectId}, fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, timeTaken: `);
+    console.timeEnd(
+      `mongoose-sort-encrypted-field -> updateSortFieldsForDocument() -> objectId: ${objectId}, fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, timeTaken: `
+    );
   }
 }
 
