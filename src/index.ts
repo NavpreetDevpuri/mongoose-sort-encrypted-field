@@ -46,7 +46,7 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
     next();
   });
 
-  schema.pre("updateOne", async function preUpdateOne(res, next) {
+  schema.pre("updateOne", async function preUpdateOne(next) {
     const update: Update = this.getUpdate();
     for (const fieldName in sortFields) {
       const sortFieldName = sortFields[fieldName];
@@ -83,7 +83,7 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
     next();
   });
 
-  schema.pre("updateMany", async function preUpdateMany(res, next) {
+  schema.pre("updateMany", async function preUpdateMany(next) {
     const update = this.getUpdate();
     for (const fieldName in sortFields) {
       const sortFieldName = sortFields[fieldName];
