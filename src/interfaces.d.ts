@@ -11,6 +11,7 @@ interface PluginOptions {
   redisQueueClientOptions?: RedisQueueClientOptions;
   ignoreCases?: boolean;
   silent?: boolean;
+  selectSortFields?: boolean;
   noOfCharsForSortId?: number;
   noOfCharsToIncreaseOnSaturation?: number;
   revaluateAllThreshold?: number;

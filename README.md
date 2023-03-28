@@ -52,11 +52,11 @@ documents = [
   { firstName: "a", middleName: "b", lastName: "b" },
   { firstName: "a", middleName: null, lastName: "b" },
   { firstName: "a", middleName: undefined, lastName: "b" },
-]; 
+];
 
 // If we sort as { $sort: { firstName: 1, middleName: 1, lastName: 1 } }
 // For full name then it will be wrong according to default behaviour
-["aa", "abb", "ab", "ab"]
+["aa", "abb", "ab", "ab"];
 
 // So, in our plugin we are doing as follow
 documents = [
@@ -67,7 +67,7 @@ documents = [
   { firstName: "a", middleName: "b", lastName: "b" },
 ];
 // Now it is corrent
-["aa", "ab", "ab", "abb"]
+["aa", "ab", "ab", "abb"];
 ```
 
 ### pluginOptions:
@@ -84,7 +84,8 @@ documents = [
      redisKeyPrefix: "mongoose-sort-encrypted-field",
    }
    ```
-    Any options which we can pass to [redis-ordered-queue](https://www.npmjs.com/package/redis-ordered-queue) constructor and redis options can be an instance of [ioredis](https://www.npmjs.com/package/ioredis) or any value that we can pass to ioredis constructor
+
+   Any options which we can pass to [redis-ordered-queue](https://www.npmjs.com/package/redis-ordered-queue) constructor and redis options can be an instance of [ioredis](https://www.npmjs.com/package/ioredis) or any value that we can pass to ioredis constructor
 
 2. `noOfCharsForSortId?: number` default: `50`
    Number of characters for sort ID, bigger number is mathematically better.
@@ -101,13 +102,16 @@ documents = [
 5. `silent?: boolean;` default: `false` <br>
    Flag to turn on/off console info logs
 
-6. `revaluateAllThreshold?: number;` default: `0.5` <br>
+6. `selectSortFields?: boolean;` default: `false` <br>
+   Flag for `select` option for sort fields. If set `false` then the sort fields will be removed from any query result.
+
+7. `revaluateAllThreshold?: number;` default: `0.5` <br>
    If the number of documents without sort ID divided by the total number of documents is less than this threshold
    Then it will get all values, sort them, and generate sort ID for all at equal distances 0 to 2^16
    For example, if we have 3 documents and we can 00 to 20 sort ID
    then those documents will have 05 10 15 sort ID
 
-7. `revaluateAllCountThreshold?: number;` default: `100` <br>
+8. `revaluateAllCountThreshold?: number;` default: `100` <br>
    If the total number of documents is less than this value
    then it will regenerate the sort ID the same way as revaluateAllThreshold
 

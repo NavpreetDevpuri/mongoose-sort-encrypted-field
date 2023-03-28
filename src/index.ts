@@ -10,10 +10,10 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
     ...pluginOptions,
   };
 
-  const { redisQueueClientOptions } = sortEncryptedFieldsOptions;
+  const { redisQueueClientOptions, selectSortFields } = sortEncryptedFieldsOptions;
 
-  const sortFields = {};
-  const decrypters = {};
+  const sortFields: SortEncryptedFieldsOptions["sortFields"] = {};
+  const decrypters: SortEncryptedFieldsOptions["decrypters"] = {};
 
   for (const [fieldName, field] of Object.entries(schema.paths)) {
     if (!field.options.sortFieldName) continue;
@@ -23,6 +23,7 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
       [field.options.sortFieldName]: {
         type: String,
         default: null,
+        select: selectSortFields,
       },
     });
   }

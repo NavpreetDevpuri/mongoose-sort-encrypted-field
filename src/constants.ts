@@ -13,6 +13,7 @@ const PLUGIN_OPTIONS: PluginOptions = {
   redisQueueClientOptions: REDIS_QUEUE_CLIENT_OPTIONS,
   ignoreCases: false,
   silent: false,
+  selectSortFields: false,
   noOfCharsForSortId: 50,
   noOfCharsToIncreaseOnSaturation: 2,
   revaluateAllThreshold: 0.5,
