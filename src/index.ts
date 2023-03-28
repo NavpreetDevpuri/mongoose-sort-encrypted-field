@@ -37,11 +37,9 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
 
   schema.post("save", async function save(doc, next) {
     for (const [fieldName, sortFieldName] of Object.entries(sortFields)) {
-      await modelsQueue.addJob(`${this.constructor.modelName}${sortFieldName}`, {
+      await modelsQueue.addJob(`${this.constructor.modelName}::${fieldName}::${sortFieldName}`, {
         objectId: doc._id,
-        fieldName,
         fieldValue: doc[fieldName],
-        sortFieldName,
       });
     }
     next();
@@ -74,11 +72,9 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
         const document = await this.model.findOne(this.getFilter(), { _id: 1, [fieldName]: 1 }).exec();
         if (document) {
           const fieldValue = document[fieldName];
-          await modelsQueue.addJob(`${this.model.modelName}${sortFieldName}`, {
+          await modelsQueue.addJob(`${this.model.modelName}::${fieldName}::${sortFieldName}`, {
             objectId: document._id,
-            fieldName,
             fieldValue,
-            sortFieldName,
           });
         }
       }
@@ -114,11 +110,9 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
         const documents = await this.model.find(this.getFilter(), { _id: 1 }).exec();
         if (documents && documents.length > 0) {
           for (let i = 0; i < documents.length; i += 1) {
-            await modelsQueue.addJob(`${this.model.modelName}${sortFieldName}`, {
+            await modelsQueue.addJob(`${this.model.modelName}::${fieldName}::${sortFieldName}`, {
               objectId: documents[i]._id,
-              fieldName,
               fieldValue,
-              sortFieldName,
             });
           }
         }
@@ -135,7 +129,7 @@ function getModelWithSortEncryptedFieldsPlugin(documentName, schema, pluginOptio
   const model = mongoose.model(documentName, schema);
 
   for (const fieldName in sortFields) {
-    modelsQueue.registerGroup(`${model.modelName}${sortFields[fieldName]}`, model);
+    modelsQueue.registerGroup(model, fieldName, sortFields[fieldName]);
   }
 
   model
@@ -145,18 +139,15 @@ function getModelWithSortEncryptedFieldsPlugin(documentName, schema, pluginOptio
     .then(async (noOfTotalDocuments) => {
       for (const fieldName in sortFields) {
         const sortFieldName = sortFields[fieldName];
+        const groupId = `${model.modelName}::${fieldName}::${sortFieldName}`;
         const noOfDocumentsWithoutSortId = await model
           .find({ $or: [{ [sortFieldName]: null }, { [sortFieldName]: { $exists: false } }] })
           .count()
           .exec();
         if (noOfTotalDocuments <= revaluateAllCountThreshold || noOfDocumentsWithoutSortId / noOfTotalDocuments > revaluateAllThreshold) {
-          await modelsQueue.removeAllJobs(`${model.modelName}${sortFieldName}`);
-          await modelsQueue.addJob(`${model.modelName}${sortFieldName}`, {
-            generateSortIdForAllDocuments: true,
-            fieldName,
-            sortFieldName,
-            ignoreCases,
-            noOfCharsForSortId,
+          await modelsQueue.removeAllJobs(groupId);
+          await modelsQueue.addJob(groupId, {
+            updateSortIdForAllDocuments: true,
           });
         } else {
           const documents = await model
@@ -165,11 +156,9 @@ function getModelWithSortEncryptedFieldsPlugin(documentName, schema, pluginOptio
           if (documents && documents.length > 0) {
             for (let i = 0; i < documents.length; i += 1) {
               const fieldValue = documents[i][fieldName];
-              await modelsQueue.addJob(`${model.modelName}${sortFieldName}`, {
+              await modelsQueue.addJob(groupId, {
                 objectId: documents[i]._id,
-                fieldName,
                 fieldValue,
-                sortFieldName,
               });
             }
           }

@@ -2,7 +2,7 @@ const { RedisQueueClient } = require("redis-ordered-queue");
 const Redis = require("ioredis");
 
 const { REDIS_QUEUE_CLIENT_OPTIONS } = require("./constants");
-const { updateSortFieldsForDocument, generateSortIdForAllDocuments } = require("./utils");
+const { SortIdManager } = require("./sortIdManager");
 
 const defaultRedisKeyPrefix = "mongoose-sort-encrypted-field";
 let modelsQueue;
@@ -10,9 +10,9 @@ let modelsQueue;
 class ModelsQueue {
   client: typeof RedisQueueClient;
   noOfGroups: number;
-  groupIdToModelMap = {};
+  groupIdToSortIdManagerMap = {};
   constructor(redisQueueClientOptions) {
-    this.groupIdToModelMap = {};
+    this.groupIdToSortIdManagerMap = {};
     redisQueueClientOptions = {
       ...REDIS_QUEUE_CLIENT_OPTIONS,
       ...redisQueueClientOptions,
@@ -36,25 +36,24 @@ class ModelsQueue {
           lock: { groupId },
         },
       }) {
-        data.model = modelsQueue.groupIdToModelMap[groupId];
-        if (!data.model) {
+        const sortIdManger = modelsQueue.groupIdToSortIdManagerMap[groupId];
+        if (!sortIdManger) {
           console.log(
-            `mongoose-sort-encrypted-field (Warining) -> Unable to find model for groupId: ${groupId}, 
-            It might be some old job that sort field is no longer exists 
+            `mongoose-sort-encrypted-field (Warining) -> Unable to find sortIdManager for groupId: ${groupId}, 
+            It might be some old job for that sort field is no longer exists 
             Or you forgot to add sortFieldName option in schema field options.`
           );
           return;
         }
-        const { silent } = data.model.schema.options.sortEncryptedFieldsOptions;
-        if (!silent) {
+        if (!sortIdManger.silent) {
           const noOfPendingJobs = (await modelsQueue.client.getMetrics(100)).topMessageGroupsMessageBacklogLength;
           console.log(`mongoose-sort-encrypted-field -> handleMessage() -> noOfPendingJobs: ${noOfPendingJobs}`);
         }
-        if (data.generateSortIdForAllDocuments) {
-          await generateSortIdForAllDocuments(data);
+        if (data.updateSortIdForAllDocuments) {
+          await sortIdManger.updateSortIdForAllDocuments();
           return;
         }
-        await updateSortFieldsForDocument(data);
+        await sortIdManger.updateSortFieldsForDocument(data.objectId, data.fieldValue);
       },
     });
   }
@@ -63,9 +62,10 @@ class ModelsQueue {
     await this.client.send({ groupId, data });
   }
 
-  registerGroup(groupId, model) {
-    if (!this.groupIdToModelMap[groupId]) {
-      this.groupIdToModelMap[groupId] = model;
+  registerGroup(model, fieldName, sortFieldName) {
+    const groupId = `${model.modelName}::${fieldName}::${sortFieldName}`;
+    if (!this.groupIdToSortIdManagerMap[groupId]) {
+      this.groupIdToSortIdManagerMap[groupId] = new SortIdManager(model, fieldName, sortFieldName);
     }
   }
 
