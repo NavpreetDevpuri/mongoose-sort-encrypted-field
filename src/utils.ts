@@ -123,7 +123,7 @@ async function generateSortIdForAllDocuments({ model, fieldName, sortFieldName }
   const { silent, ignoreCases, noOfCharsForSortId } = model.schema.options.sortEncryptedFieldsOptions;
   if (!silent) {
     console.time(
-      `mongoose-sort-encrypted-field -> generateSortIdForAllDocuments() -> fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, sortFieldName: ${sortFieldName}, timeTaken: `
+      `mongoose-sort-encrypted-field -> generateSortIdForAllDocuments() -> fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, timeTaken: `
     );
   }
   const documents = await model.find({}, { [fieldName]: 1 }).exec();

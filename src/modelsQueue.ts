@@ -37,6 +37,14 @@ class ModelsQueue {
         },
       }) {
         data.model = modelsQueue.groupIdToModelMap[groupId];
+        if (!data.model) {
+          console.log(
+            `mongoose-sort-encrypted-field (Warining) -> Unable to find model for groupId: ${groupId}, 
+            It might be some old job that sort field is no longer exists 
+            Or you forgot to add sortFieldName option in schema field options.`
+          );
+          return;
+        }
         const { silent } = data.model.schema.options.sortEncryptedFieldsOptions;
         if (!silent) {
           const noOfPendingJobs = (await modelsQueue.client.getMetrics(100)).topMessageGroupsMessageBacklogLength;
