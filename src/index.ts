@@ -124,8 +124,7 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
 
 function getModelWithSortEncryptedFieldsPlugin(documentName, schema, pluginOptions) {
   schema.plugin(sortEncryptedFields, pluginOptions);
-  const { ignoreCases, noOfCharsForSortId, sortFields, modelsQueue, revaluateAllThreshold, revaluateAllCountThreshold } =
-    schema.options.sortEncryptedFieldsOptions;
+  const { sortFields, modelsQueue, revaluateAllThreshold, revaluateAllCountThreshold } = schema.options.sortEncryptedFieldsOptions;
   const model = mongoose.model(documentName, schema);
 
   for (const fieldName in sortFields) {
