@@ -8,6 +8,39 @@ async function getDocument(model, fieldName, sortFieldName, skip) {
     .exec();
 }
 
+function getAverageSortId(predecessorSortId, successorSortId, noOfCharsToIncreaseOnSaturation) {
+  if (!predecessorSortId) {
+    predecessorSortId = "".padEnd(successorSortId.length, "\0");
+  }
+
+  if (!successorSortId) {
+    successorSortId = "".padEnd(predecessorSortId.length, "\uffff");
+  }
+
+  let predecessorNumber;
+  let successorNumber;
+
+  if (predecessorSortId.length === successorSortId.length) {
+    predecessorNumber = new Base2N(predecessorSortId, 16);
+    successorNumber = new Base2N(successorSortId, 16);
+    const averageNumber = predecessorNumber.average(successorNumber);
+    if (averageNumber.toString() !== predecessorNumber.toString()) {
+      return averageNumber.toString();
+    }
+    predecessorNumber = new Base2N(predecessorSortId.padEnd(averageNumber.length + noOfCharsToIncreaseOnSaturation, "\0"), 16);
+    successorNumber = new Base2N(successorSortId.padEnd(averageNumber.length + noOfCharsToIncreaseOnSaturation, "\0"), 16);
+    return predecessorNumber.average(successorNumber).toString();
+  }
+
+  const bigger = predecessorSortId.length > successorSortId.length ? predecessorSortId : successorSortId;
+  const smaller = successorSortId.length > predecessorSortId.length ? predecessorSortId : successorSortId;
+
+  const biggerNumber = new Base2N(bigger, 16);
+  const smallerNumber = new Base2N(smaller.padEnd(bigger.length, "\0"), 16);
+
+  return biggerNumber.average(smallerNumber).toString();
+}
+
 async function generateSortIdUsingBinarySearch(model, fieldName, fieldValue, sortFieldName) {
   const { ignoreCases, noOfCharsForSortId, noOfCharsToIncreaseOnSaturation } = model.schema.options.sortEncryptedFieldsOptions;
   fieldValue = fieldValue || "";
@@ -70,41 +103,8 @@ async function generateSortIdUsingBinarySearch(model, fieldName, fieldValue, sor
   return getAverageSortId(endDoc[sortFieldName], startDoc[sortFieldName], noOfCharsToIncreaseOnSaturation);
 }
 
-function getAverageSortId(predecessorSortId, successorSortId, noOfCharsToIncreaseOnSaturation) {
-  if (!predecessorSortId) {
-    predecessorSortId = "".padEnd(successorSortId.length, "\0");
-  }
-
-  if (!successorSortId) {
-    successorSortId = "".padEnd(predecessorSortId.length, "\uffff");
-  }
-
-  let predecessorNumber;
-  let successorNumber;
-
-  if (predecessorSortId.length === successorSortId.length) {
-    predecessorNumber = new Base2N(predecessorSortId, 16);
-    successorNumber = new Base2N(successorSortId, 16);
-    const averageNumber = predecessorNumber.average(successorNumber);
-    if (averageNumber.toString() !== predecessorNumber.toString()) {
-      return averageNumber.toString();
-    }
-    predecessorNumber = new Base2N(predecessorSortId.padEnd(averageNumber.length + noOfCharsToIncreaseOnSaturation, "\0"), 16);
-    successorNumber = new Base2N(successorSortId.padEnd(averageNumber.length + noOfCharsToIncreaseOnSaturation, "\0"), 16);
-    return predecessorNumber.average(successorNumber).toString();
-  }
-
-  const bigger = predecessorSortId.length > successorSortId.length ? predecessorSortId : successorSortId;
-  const smaller = successorSortId.length > predecessorSortId.length ? predecessorSortId : successorSortId;
-
-  const biggerNumber = new Base2N(bigger, 16);
-  const smallerNumber = new Base2N(smaller.padEnd(bigger.length, "\0"), 16);
-
-  return biggerNumber.average(smallerNumber).toString();
-}
-
 async function updateSortFieldsForDocument({ objectId, model, fieldName, fieldValue, sortFieldName }) {
-  const { silent, noOfCharsToIncreaseOnSaturation } = model.schema.options.sortEncryptedFieldsOptions;
+  const { silent } = model.schema.options.sortEncryptedFieldsOptions;
   if (!silent) {
     console.time(
       `mongoose-sort-encrypted-field -> updateSortFieldsForDocument() -> objectId: ${objectId}, fieldName: ${fieldName}, sortFieldName: ${sortFieldName}, timeTaken: `
