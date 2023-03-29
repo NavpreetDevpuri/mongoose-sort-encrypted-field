@@ -144,6 +144,9 @@ function getModelWithSortEncryptedFieldsPlugin(documentName, schema, pluginOptio
           .find({ $or: [{ [sortFieldName]: null }, { [sortFieldName]: { $exists: false } }] })
           .count()
           .exec();
+        if (noOfTotalDocuments === 0) {
+          return;
+        }
         if (noOfTotalDocuments <= revaluateAllCountThreshold || noOfDocumentsWithoutSortId / noOfTotalDocuments > revaluateAllThreshold) {
           await modelsQueue.removeAllJobs(groupId);
           await modelsQueue.addJob(groupId, {

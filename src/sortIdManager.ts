@@ -161,8 +161,11 @@ class SortIdManager {
     for (let i = 0; i < n; i += 1) {
       if (i === 0 || documents[i - 1][this.fieldName] !== documents[i][this.fieldName]) {
         curr = add(curr, diff);
+        if (curr[curr.length - 1] === 0 && curr.length > diff.length) {
+          curr = curr.slice(0, curr.length - 1);
+        }
       }
-      await this.model.updateOne({ _id: documents[i]._id }, { $set: { [this.sortFieldName]: curr.toString() } });
+      await this.model.updateOne({ _id: documents[i]._id }, { $set: { [this.sortFieldName]: Buffer.from(curr).reverse() } });
     }
     if (!this.silent) {
       console.timeEnd(
