@@ -1,5 +1,3 @@
-const Redis = require("ioredis");
-
 const REDIS_QUEUE_CLIENT_OPTIONS: RedisQueueClientOptions = {
   redis: null,
   batchSize: 10,
