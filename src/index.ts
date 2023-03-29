@@ -36,17 +36,7 @@ function sortEncryptedFields(schema: mongoose.Schema, pluginOptions: PluginOptio
 
   schema["options"].sortEncryptedFieldsOptions = sortEncryptedFieldsOptions;
 
-  schema.post("save", async function save(doc, next) {
-    for (const [fieldName, sortFieldName] of Object.entries(sortFields)) {
-      await modelsQueue.addJob(`${this.constructor["modelName"]}::${fieldName}::${sortFieldName}`, {
-        objectId: doc._id,
-        fieldValue: doc[fieldName],
-      });
-    }
-    next();
-  });
-
-  schema.pre("updateOne", async function preUpdateOne(next) {
+  async function preUpdateOne(next) {
     const update = this.getUpdate();
     for (const fieldName in sortFields) {
       const sortFieldName = sortFields[fieldName];
@@ -59,9 +49,9 @@ function sortEncryptedFields(schema: mongoose.Schema, pluginOptions: PluginOptio
       }
     }
     next();
-  });
+  }
 
-  schema.post("updateOne", async function postUpdateOne(res, next) {
+  async function postUpdateOne(res, next) {
     const update = this.getUpdate();
     for (const fieldName in sortFields) {
       const sortFieldName = sortFields[fieldName];
@@ -81,24 +71,19 @@ function sortEncryptedFields(schema: mongoose.Schema, pluginOptions: PluginOptio
       }
     }
     next();
-  });
+  }
 
-  schema.pre("updateMany", async function preUpdateMany(next) {
-    const update = this.getUpdate();
-    for (const fieldName in sortFields) {
-      const sortFieldName = sortFields[fieldName];
-      if (update["$set"] && update["$set"][sortFieldName]) {
-        // Bypass middleware internal call for updating any sortFieldName field
-        break;
-      }
-      if (update["$set"] && update["$set"][fieldName]) {
-        update["$set"][sortFieldName] = null;
-      }
+  async function postSave(doc, next) {
+    for (const [fieldName, sortFieldName] of Object.entries(sortFields)) {
+      await modelsQueue.addJob(`${this.constructor["modelName"]}::${fieldName}::${sortFieldName}`, {
+        objectId: doc._id,
+        fieldValue: doc[fieldName],
+      });
     }
     next();
-  });
+  }
 
-  schema.post("updateMany", async function postUpdateMany(res, next) {
+  async function postUpdateMany(res, next) {
     const update = this.getUpdate();
     for (const fieldName in sortFields) {
       const sortFieldName = sortFields[fieldName];
@@ -120,7 +105,15 @@ function sortEncryptedFields(schema: mongoose.Schema, pluginOptions: PluginOptio
       }
     }
     next();
-  });
+  }
+
+  schema.pre("updateOne", preUpdateOne);
+  schema.post("updateOne", postUpdateOne);
+  schema.pre("findOneAndUpdate", preUpdateOne);
+  schema.post("findOneAndUpdate", postUpdateOne);
+  schema.pre("updateMany", preUpdateOne);
+  schema.post("save", postSave);
+  schema.post("updateMany", postUpdateMany);
 }
 
 function getModelWithSortEncryptedFieldsPlugin(documentName, schema, pluginOptions) {
