@@ -12,8 +12,8 @@ interface PluginOptions {
   ignoreCases?: boolean;
   silent?: boolean;
   selectSortFields?: boolean;
-  noOfCharsForSortId?: number;
-  noOfCharsToIncreaseOnSaturation?: number;
+  noOfBytesForSortId?: number;
+  noOfBytesToIncreaseOnSaturation?: number;
   revaluateAllThreshold?: number;
   revaluateAllCountThreshold?: number;
 }
@@ -25,18 +25,3 @@ interface SortEncryptedFieldsOptions extends PluginOptions {
 }
 
 // dependecies interfaces
-interface Schema {
-  pre: function;
-  post: function;
-  add: function;
-  options: { sortEncryptedFieldsOptions };
-  paths: {
-    [fieldName: string]: {
-      options: { get: Function; sortFieldName: string };
-    };
-  };
-}
-
-interface Update {
-  $set: { [key: string]: string };
-}

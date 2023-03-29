@@ -87,14 +87,14 @@ documents = [
 
    Any options which we can pass to [redis-ordered-queue](https://www.npmjs.com/package/redis-ordered-queue) constructor and redis options can be an instance of [ioredis](https://www.npmjs.com/package/ioredis) or any value that we can pass to ioredis constructor
 
-2. `noOfCharsForSortId?: number` default: `50`
-   Number of characters for sort ID, bigger number is mathematically better.
+2. `noOfBytesForSortId?: number` default: `50`
+   Number of bytes for sort ID, bigger number is mathematically better.
 
-3. `noOfCharsToIncreaseOnSaturation?: number;` default: `2` <br>
-   Number of chars to increase on saturation, for example,
+3. `noOfBytesToIncreaseOnSaturation?: number;` default: `2` <br>
+   Number of bytes to increase on saturation, for example,
    for `04` and `05`, first, we can see there is no whole number between those
    so, It appends an extra digit at the end and it becomes `040` and `050` and the average is `045`.
-   In the base `2^16` number system, getting a saturation like that is mathematically very unlikely.
+   In the base `2^8` number system, getting a saturation like that is mathematically very unlikely.
 
 4. `ignoreCases?: boolean;` default: `false` <br>
    To ignore cases.
@@ -107,7 +107,7 @@ documents = [
 
 7. `revaluateAllThreshold?: number;` default: `0.5` <br>
    If the number of documents without sort ID divided by the total number of documents is less than this threshold
-   Then it will get all values, sort them, and generate sort ID for all at equal distances 0 to 2^16
+   Then it will get all values, sort them, and generate sort ID for all at equal distances 0 to 2^8
    For example, if we have 3 documents and we can 00 to 20 sort ID
    then those documents will have 05 10 15 sort ID
 
@@ -117,8 +117,8 @@ documents = [
 
 # How does it work?
 
-We create a sort order ID which is just a number in base `2^16`, which is a huge number system as compared to the 10 base number system. We search in DB using binary search. For `1 lakh` documents, it queries and decrypts only `18` documents (first+last+log(1lakh)) to generate a sort ID. It generates a sort order ID in `O(1)`.
+We create a sort order ID which is just a number in base `2^8`, which is a huge number system as compared to the 10 base number system. We search in DB using binary search. For `1 lakh` documents, it queries and decrypts only `18` documents (first+last+log(1lakh)) to generate a sort ID. It generates a sort order ID in `O(1)`.
 
-To generate a sort order ID it only needs to know the previous and next sort ID, and it just averages out those to get the current sort order ID, for example in the base 10 system if need to insert between `03` and `07` then `(03+07)/02` which is `05`. for `04` and `05`, first we can see there is no whole number between those so, It append extra digit at the end and it becomes `040` and `050` and the average is `045`. In the base `2^16` number system, getting a saturation like that is mathematically very unlikely.
+To generate a sort order ID it only needs to know the previous and next sort ID, and it just averages out those to get the current sort order ID, for example in the base 10 system if need to insert between `03` and `07` then `(03+07)/02` which is `05`. for `04` and `05`, first we can see there is no whole number between those so, It append extra digit at the end and it becomes `040` and `050` and the average is `045`. In the base `2^8` number system, getting a saturation like that is mathematically very unlikely.
 
 It uses [redis-ordered-queue](https://www.npmjs.com/package/redis-ordered-queue) to generate a sort ID. It means it only processes one document at a time as per the mathematical requirement of the sort ID generation algorithm even when we are running multiple instances of our service.

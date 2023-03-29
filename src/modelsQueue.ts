@@ -1,16 +1,43 @@
-const { RedisQueueClient } = require("redis-ordered-queue");
-const Redis = require("ioredis");
+import { RedisQueueClient } from "redis-ordered-queue";
+import Redis from "ioredis";
 
-const { REDIS_QUEUE_CLIENT_OPTIONS } = require("./constants");
-const { SortIdManager } = require("./sortIdManager");
+import { REDIS_QUEUE_CLIENT_OPTIONS } from "./constants";
+import { SortIdManager } from "./sortIdManager";
 
 const defaultRedisKeyPrefix = "mongoose-sort-encrypted-field";
 let modelsQueue;
 
+async function handleMessage({
+  data,
+  context: {
+    lock: { groupId },
+  },
+}) {
+  const sortIdManger = modelsQueue.groupIdToSortIdManagerMap[groupId];
+  if (!sortIdManger) {
+    console.log(
+      `mongoose-sort-encrypted-field (Warining) -> Unable to find sortIdManager for groupId: ${groupId}, 
+      It might be some old job for that sort field is no longer exists 
+      Or you forgot to add sortFieldName option in schema field options.`
+    );
+    return;
+  }
+  if (!sortIdManger.silent) {
+    const pendingJobsCount = await modelsQueue.getPendingJobsCount();
+    console.log(`mongoose-sort-encrypted-field -> handleMessage() -> noOfPendingJobs: ${pendingJobsCount}`);
+  }
+  if (data.updateSortIdForAllDocuments) {
+    await sortIdManger.updateSortIdForAllDocuments();
+    return;
+  }
+  await sortIdManger.updateSortFieldsForDocument(data.objectId, data.fieldValue);
+}
+
 class ModelsQueue {
-  client: typeof RedisQueueClient;
+  client: RedisQueueClient;
   noOfGroups: number;
   groupIdToSortIdManagerMap = {};
+  redisClient: Redis;
   constructor(redisQueueClientOptions) {
     this.groupIdToSortIdManagerMap = {};
     redisQueueClientOptions = {
@@ -18,48 +45,30 @@ class ModelsQueue {
       ...redisQueueClientOptions,
     };
     const { redis } = redisQueueClientOptions;
-
-    let redisClient = redis;
-    if (!(redis instanceof Redis)) {
-      redisClient = new Redis(redis);
+    if (!redis) {
+      this.redisClient = new Redis();
+    } else if (redis instanceof Redis) {
+      this.redisClient = redis;
+    } else {
+      this.redisClient = new Redis(redis);
     }
 
     this.client = new RedisQueueClient({
       ...redisQueueClientOptions,
-      redis: redisClient,
+      redis: this.redisClient,
     });
 
-    this.client.startConsumers({
-      handleMessage: async function handleMessage({
-        data,
-        context: {
-          lock: { groupId },
-        },
-      }) {
-        const sortIdManger = modelsQueue.groupIdToSortIdManagerMap[groupId];
-        if (!sortIdManger) {
-          console.log(
-            `mongoose-sort-encrypted-field (Warining) -> Unable to find sortIdManager for groupId: ${groupId}, 
-            It might be some old job for that sort field is no longer exists 
-            Or you forgot to add sortFieldName option in schema field options.`
-          );
-          return;
-        }
-        if (!sortIdManger.silent) {
-          const noOfPendingJobs = (await modelsQueue.client.getMetrics(100)).topMessageGroupsMessageBacklogLength;
-          console.log(`mongoose-sort-encrypted-field -> handleMessage() -> noOfPendingJobs: ${noOfPendingJobs}`);
-        }
-        if (data.updateSortIdForAllDocuments) {
-          await sortIdManger.updateSortIdForAllDocuments();
-          return;
-        }
-        await sortIdManger.updateSortFieldsForDocument(data.objectId, data.fieldValue);
-      },
-    });
+    this.client.startConsumers({ handleMessage });
   }
 
-  async addJob(groupId, data) {
-    await this.client.send({ groupId, data });
+  async getPendingJobsCount() {
+    const metrics = await modelsQueue.client.getMetrics(100);
+    const pendingJobsCount = metrics.topMessageGroupsMessageBacklogLength;
+    return pendingJobsCount;
+  }
+
+  async addJob(groupId: string, data: any) {
+    await this.client.send({ groupId, data, priority: 1 });
   }
 
   registerGroup(model, fieldName, sortFieldName) {
@@ -70,12 +79,12 @@ class ModelsQueue {
   }
 
   async removeAllJobs(modelName) {
-    const keys = await this.client.redis.keys(`${defaultRedisKeyPrefix}::msg-group-queue::${modelName}`);
-    var pipeline = this.client.redis.pipeline();
+    const keys = await this.redisClient.keys(`${defaultRedisKeyPrefix}::msg-group-queue::${modelName}`);
+    var pipeline = this.redisClient.pipeline();
     keys.forEach(function (key) {
       pipeline.del(key);
     });
-    pipeline.exec();
+    await pipeline.exec();
   }
 }
 

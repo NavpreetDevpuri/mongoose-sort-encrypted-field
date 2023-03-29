@@ -1,10 +1,10 @@
 // mongoose is not in package.json to avoid compatibility issues with npm package user
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
-const { PLUGIN_OPTIONS } = require("./constants");
-const { getModelsQueue } = require("./modelsQueue");
+import { PLUGIN_OPTIONS } from "./constants";
+import { getModelsQueue } from "./modelsQueue";
 
-function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
+function sortEncryptedFields(schema: mongoose.Schema, pluginOptions: PluginOptions) {
   const sortEncryptedFieldsOptions: SortEncryptedFieldsOptions = {
     ...PLUGIN_OPTIONS,
     ...pluginOptions,
@@ -21,7 +21,7 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
     if (!decrypters[fieldName]) decrypters[fieldName] = field.options.get;
     schema.add({
       [field.options.sortFieldName]: {
-        type: String,
+        type: Buffer,
         default: null,
         select: selectSortFields,
       },
@@ -34,11 +34,11 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
   const modelsQueue = getModelsQueue(redisQueueClientOptions);
   sortEncryptedFieldsOptions.modelsQueue = modelsQueue;
 
-  schema.options.sortEncryptedFieldsOptions = sortEncryptedFieldsOptions;
+  schema["options"].sortEncryptedFieldsOptions = sortEncryptedFieldsOptions;
 
   schema.post("save", async function save(doc, next) {
     for (const [fieldName, sortFieldName] of Object.entries(sortFields)) {
-      await modelsQueue.addJob(`${this.constructor.modelName}::${fieldName}::${sortFieldName}`, {
+      await modelsQueue.addJob(`${this.constructor["modelName"]}::${fieldName}::${sortFieldName}`, {
         objectId: doc._id,
         fieldValue: doc[fieldName],
       });
@@ -47,29 +47,29 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
   });
 
   schema.pre("updateOne", async function preUpdateOne(next) {
-    const update: Update = this.getUpdate();
+    const update = this.getUpdate();
     for (const fieldName in sortFields) {
       const sortFieldName = sortFields[fieldName];
-      if (update.$set && update.$set[sortFieldName]) {
+      if (update["$set"] && update["$set"][sortFieldName]) {
         // Bypass middleware internal call for updating any sortFieldName field
         break;
       }
-      if (update.$set && update.$set[fieldName]) {
-        update.$set[sortFieldName] = null;
+      if (update["$set"] && update["$set"][fieldName]) {
+        update["$set"][sortFieldName] = null;
       }
     }
     next();
   });
 
   schema.post("updateOne", async function postUpdateOne(res, next) {
-    const update: Update = this.getUpdate();
+    const update = this.getUpdate();
     for (const fieldName in sortFields) {
       const sortFieldName = sortFields[fieldName];
-      if (update.$set && update.$set[sortFieldName]) {
+      if (update["$set"] && update["$set"][sortFieldName]) {
         // Bypass middleware internal call for updating any sortFieldName field
         break;
       }
-      if (update.$set && update.$set[fieldName]) {
+      if (update["$set"] && update["$set"][fieldName]) {
         const document = await this.model.findOne(this.getFilter(), { _id: 1, [fieldName]: 1 }).exec();
         if (document) {
           const fieldValue = document[fieldName];
@@ -87,12 +87,12 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
     const update = this.getUpdate();
     for (const fieldName in sortFields) {
       const sortFieldName = sortFields[fieldName];
-      if (update.$set && update.$set[sortFieldName]) {
+      if (update["$set"] && update["$set"][sortFieldName]) {
         // Bypass middleware internal call for updating any sortFieldName field
         break;
       }
-      if (update.$set && update.$set[fieldName]) {
-        update.$set[sortFieldName] = null;
+      if (update["$set"] && update["$set"][fieldName]) {
+        update["$set"][sortFieldName] = null;
       }
     }
     next();
@@ -102,12 +102,12 @@ function sortEncryptedFields(schema: Schema, pluginOptions: PluginOptions) {
     const update = this.getUpdate();
     for (const fieldName in sortFields) {
       const sortFieldName = sortFields[fieldName];
-      if (update.$set && update.$set[sortFieldName]) {
+      if (update["$set"] && update["$set"][sortFieldName]) {
         // Bypass middleware internal call for updating any sortFieldName field
         break;
       }
-      if (update.$set && update.$set[fieldName]) {
-        const fieldValue = update.$set[fieldName];
+      if (update["$set"] && update["$set"][fieldName]) {
+        const fieldValue = update["$set"][fieldName];
         const documents = await this.model.find(this.getFilter(), { _id: 1 }).exec();
         if (documents && documents.length > 0) {
           for (let i = 0; i < documents.length; i += 1) {
@@ -168,4 +168,5 @@ function getModelWithSortEncryptedFieldsPlugin(documentName, schema, pluginOptio
   return model;
 }
 
-module.exports = { getModelWithSortEncryptedFieldsPlugin };
+export default getModelWithSortEncryptedFieldsPlugin;
+export { getModelWithSortEncryptedFieldsPlugin };

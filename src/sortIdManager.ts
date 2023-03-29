@@ -1,4 +1,4 @@
-const Base2N = require("@navpreetdevpuri/base-2-n");
+const { add, shift } = require("math-buffer");
 
 class SortIdManager {
   model: any;
@@ -6,17 +6,17 @@ class SortIdManager {
   sortFieldName: string;
   silent: boolean;
   ignoreCases: boolean;
-  noOfCharsForSortId: number;
-  noOfCharsToIncreaseOnSaturation: number;
+  noOfBytesForSortId: number;
+  noOfBytesToIncreaseOnSaturation: number;
   constructor(model, fieldName, sortFieldName) {
     this.model = model;
     this.fieldName = fieldName;
     this.sortFieldName = sortFieldName;
-    const { silent, ignoreCases, noOfCharsForSortId, noOfCharsToIncreaseOnSaturation } = model.schema.options.sortEncryptedFieldsOptions;
+    const { silent, ignoreCases, noOfBytesForSortId, noOfBytesToIncreaseOnSaturation } = model.schema.options.sortEncryptedFieldsOptions;
     this.silent = silent;
     this.ignoreCases = ignoreCases;
-    this.noOfCharsForSortId = noOfCharsForSortId;
-    this.noOfCharsToIncreaseOnSaturation = noOfCharsToIncreaseOnSaturation;
+    this.noOfBytesForSortId = noOfBytesForSortId;
+    this.noOfBytesToIncreaseOnSaturation = noOfBytesToIncreaseOnSaturation;
   }
 
   async getDocument(skip) {
@@ -27,37 +27,38 @@ class SortIdManager {
       .exec();
   }
 
-  getAverageSortId(predecessorSortId, successorSortId) {
+  getAverageSortId(predecessorSortId: Buffer, successorSortId: Buffer) {
     if (!predecessorSortId) {
-      predecessorSortId = "".padEnd(successorSortId.length, "\0");
+      predecessorSortId = Buffer.from("".padEnd(2 * successorSortId.length, "0"), "hex");
     }
-
     if (!successorSortId) {
-      successorSortId = "".padEnd(predecessorSortId.length, "\uffff");
+      successorSortId = Buffer.from("".padEnd(2 * predecessorSortId.length, "f"), "hex");
     }
-
-    let predecessorNumber;
-    let successorNumber;
-
+    predecessorSortId.reverse();
+    successorSortId.reverse();
     if (predecessorSortId.length === successorSortId.length) {
-      predecessorNumber = new Base2N(predecessorSortId, 16);
-      successorNumber = new Base2N(successorSortId, 16);
-      const averageNumber = predecessorNumber.average(successorNumber);
-      if (averageNumber.toString() !== predecessorNumber.toString()) {
-        return averageNumber.toString();
+      if (add(predecessorSortId, Buffer.from([0x01])).equals(successorSortId)) {
+        predecessorSortId = Buffer.concat([Buffer.from("".padEnd(2 * this.noOfBytesToIncreaseOnSaturation, "0"), "hex"), predecessorSortId]);
+        successorSortId = Buffer.concat([Buffer.from("".padEnd(2 * this.noOfBytesToIncreaseOnSaturation, "0"), "hex"), successorSortId]);
       }
-      predecessorNumber = new Base2N(predecessorSortId.padEnd(averageNumber.length + this.noOfCharsToIncreaseOnSaturation, "\0"), 16);
-      successorNumber = new Base2N(successorSortId.padEnd(averageNumber.length + this.noOfCharsToIncreaseOnSaturation, "\0"), 16);
-      return predecessorNumber.average(successorNumber).toString();
+      let averageSortId = add(shift(predecessorSortId, -1), shift(successorSortId, -1));
+      if (averageSortId[averageSortId.length - 1] === 0 && averageSortId.length > predecessorSortId.length) {
+        averageSortId = averageSortId.slice(0, averageSortId.length - 1);
+      }
+      averageSortId.reverse();
+      return averageSortId;
     }
 
-    const bigger = predecessorSortId.length > successorSortId.length ? predecessorSortId : successorSortId;
-    const smaller = successorSortId.length > predecessorSortId.length ? predecessorSortId : successorSortId;
+    const biggerSortId = predecessorSortId.length > successorSortId.length ? predecessorSortId : successorSortId;
+    let smallerSortId = successorSortId.length > predecessorSortId.length ? predecessorSortId : successorSortId;
 
-    const biggerNumber = new Base2N(bigger, 16);
-    const smallerNumber = new Base2N(smaller.padEnd(bigger.length, "\0"), 16);
-
-    return biggerNumber.average(smallerNumber).toString();
+    smallerSortId = Buffer.concat([Buffer.from("".padEnd(2 * (biggerSortId.length - smallerSortId.length), "0"), "hex"), smallerSortId]);
+    let averageSortId = add(shift(predecessorSortId, -1), shift(successorSortId, -1));
+    if (averageSortId[averageSortId.length - 1] === 0 && averageSortId.length > biggerSortId.length) {
+      averageSortId = averageSortId.slice(0, averageSortId.length - 1);
+    }
+    averageSortId.reverse();
+    return averageSortId;
   }
 
   async generateSortIdUsingBinarySearch(fieldValue) {
@@ -68,8 +69,8 @@ class SortIdManager {
       .count()
       .exec();
     if (n === 0) {
-      const predecessorSortId = new Base2N("\0", 16, this.noOfCharsForSortId).toString();
-      const successorSortId = "".padEnd(this.noOfCharsForSortId, "\uffff");
+      const predecessorSortId = Buffer.from("".padEnd(2 * this.noOfBytesForSortId, "0"), "hex");
+      const successorSortId = Buffer.from("".padEnd(2 * this.noOfBytesForSortId, "f"), "hex");
       return this.getAverageSortId(predecessorSortId, successorSortId);
     }
     let start = 0;
@@ -128,7 +129,7 @@ class SortIdManager {
       );
     }
     const newSortId = await this.generateSortIdUsingBinarySearch(fieldValue);
-    await this.model.updateOne({ _id: objectId }, { $set: { [this.sortFieldName]: newSortId.toString() } });
+    await this.model.updateOne({ _id: objectId }, { $set: { [this.sortFieldName]: newSortId } });
     if (!this.silent) {
       console.timeEnd(
         `mongoose-sort-encrypted-field -> updateSortFieldsForDocument() -> objectId: ${objectId}, fieldName: ${this.fieldName}, sortFieldName: ${this.sortFieldName}, timeTaken: `
@@ -152,14 +153,14 @@ class SortIdManager {
     });
     const n = documents.length;
     const log2n = Math.round(Math.log2(n)) + 1;
-    let diff = new Base2N("".padEnd(this.noOfCharsForSortId, "\uffff"), 16);
+    let diff = Buffer.from("".padEnd(this.noOfBytesForSortId, "f"), "hex");
     for (let i = 0; i < log2n; i += 1) {
-      diff = diff.half();
+      diff = shift(diff, -1);
     }
-    let curr = new Base2N("\0", 16, this.noOfCharsForSortId);
+    let curr = Buffer.from("".padEnd(this.noOfBytesForSortId, "0"), "hex");
     for (let i = 0; i < n; i += 1) {
       if (i === 0 || documents[i - 1][this.fieldName] !== documents[i][this.fieldName]) {
-        curr = curr.add(diff);
+        curr = add(curr, diff);
       }
       await this.model.updateOne({ _id: documents[i]._id }, { $set: { [this.sortFieldName]: curr.toString() } });
     }

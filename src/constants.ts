@@ -1,7 +1,7 @@
 const Redis = require("ioredis");
 
 const REDIS_QUEUE_CLIENT_OPTIONS: RedisQueueClientOptions = {
-  redis: new Redis(),
+  redis: null,
   batchSize: 10,
   groupVisibilityTimeoutMs: 60000,
   pollingTimeoutMs: 10000,
@@ -14,8 +14,8 @@ const PLUGIN_OPTIONS: PluginOptions = {
   ignoreCases: false,
   silent: false,
   selectSortFields: false,
-  noOfCharsForSortId: 50,
-  noOfCharsToIncreaseOnSaturation: 2,
+  noOfBytesForSortId: 50,
+  noOfBytesToIncreaseOnSaturation: 2,
   revaluateAllThreshold: 0.5,
   revaluateAllCountThreshold: 100,
 };
