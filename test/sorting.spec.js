@@ -71,10 +71,10 @@ describe("mongoose-sort-encrypted-field tests", async function () {
       }
       await unencryptedUserModel.deleteMany({}).exec();
       await encryptedUserModel.deleteMany({}).exec();
-      for (const newUser of newUsers) {
+      await Promise.all(newUsers.map(async (newUser) => {
         await unencryptedUserModel.createUser(newUser);
         await encryptedUserModel.createUser(newUser);
-      }
+      }));
       assert.equal(await unencryptedUserModel.find({}).count().exec(), newUsers.length);
       assert.equal(await encryptedUserModel.find({}).count().exec(), newUsers.length);
     });
