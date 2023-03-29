@@ -30,7 +30,7 @@ const encryptedUserSchema = new mongoose.Schema({
   // },
 });
 
-encryptedUserSchema.statics.createUser = async function (data) {
+encryptedUserSchema.statics.createUser = async function createUser(data) {
   const user = new this(data);
   const userData = await user.save();
   return userData;

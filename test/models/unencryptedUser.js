@@ -1,8 +1,5 @@
-const { getModelWithSortEncryptedFieldsPlugin } = require("../../lib/index");
-const { getRedis } = require("../utils/databases");
 const mongoose = require("mongoose");
 
-const redis = getRedis();
 const unencryptedUserSchema = new mongoose.Schema({
   firstName: {
     type: String,
@@ -20,7 +17,7 @@ const unencryptedUserSchema = new mongoose.Schema({
   },
 });
 
-unencryptedUserSchema.statics.createUser = async function (data) {
+unencryptedUserSchema.statics.createUser = async function createUser(data) {
   const user = new this(data);
   const userData = await user.save();
   return userData;
