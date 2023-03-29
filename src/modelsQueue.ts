@@ -62,7 +62,7 @@ class ModelsQueue {
   }
 
   async getPendingJobsCount() {
-    const metrics = await modelsQueue.client.getMetrics(100);
+    const metrics = await this.client.getMetrics({ topMessageGroupsLimit: 100 });
     const pendingJobsCount = metrics.topMessageGroupsMessageBacklogLength;
     return pendingJobsCount;
   }
