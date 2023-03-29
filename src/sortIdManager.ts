@@ -153,11 +153,11 @@ class SortIdManager {
     });
     const n = documents.length;
     const log2n = Math.round(Math.log2(n)) + 1;
-    let diff = Buffer.from("".padEnd(this.noOfBytesForSortId, "f"), "hex");
+    let diff = Buffer.from("".padEnd(2 * this.noOfBytesForSortId, "f"), "hex");
     for (let i = 0; i < log2n; i += 1) {
       diff = shift(diff, -1);
     }
-    let curr = Buffer.from("".padEnd(this.noOfBytesForSortId, "0"), "hex");
+    let curr = Buffer.from("".padEnd(2 * this.noOfBytesForSortId, "0"), "hex");
     for (let i = 0; i < n; i += 1) {
       if (i === 0 || documents[i - 1][this.fieldName] !== documents[i][this.fieldName]) {
         curr = add(curr, diff);

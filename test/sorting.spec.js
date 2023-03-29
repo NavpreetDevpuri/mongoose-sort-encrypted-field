@@ -132,17 +132,17 @@ describe("mongoose-sort-encrypted-field tests", async function () {
         })
       );
     });
-    // it("Sorting check for { firstName: 1, middleName: 1, lastName: 1 } after rebuilding for all documents", async function () {
-    //   await Promise.all(
-    //     Object.values(modelsQueue.groupIdToSortIdManagerMap).map(async (sortIdManger) => sortIdManger.updateSortIdForAllDocuments())
-    //   );
-    //   const unencryptedUsers = await unencryptedUserModel.find({}).sort({ firstName: 1, middleName: 1, lastName: 1 }).exec();
-    //   const encryptedUsers = await encryptedUserModel.find({}).sort({ firstNameSort: 1, middleNameSort: 1, lastNameSort: 1 }).exec();
-    //   await Promise.all(
-    //     unencryptedUsers.map(async (unencryptedUser, i) => {
-    //       assert.equal(unencryptedUser.lastName, encryptedUsers[i].lastName);
-    //     })
-    //   );
-    // });
+    it("Sorting check for { firstName: 1, middleName: 1, lastName: 1 } after rebuilding for all documents", async function () {
+      await Promise.all(
+        Object.values(modelsQueue.groupIdToSortIdManagerMap).map(async (sortIdManger) => sortIdManger.updateSortIdForAllDocuments())
+      );
+      const unencryptedUsers = await unencryptedUserModel.find({}).sort({ firstName: 1, middleName: 1, lastName: 1 }).exec();
+      const encryptedUsers = await encryptedUserModel.find({}).sort({ firstNameSort: 1, middleNameSort: 1, lastNameSort: 1 }).exec();
+      await Promise.all(
+        unencryptedUsers.map(async (unencryptedUser, i) => {
+          assert.equal(unencryptedUser.lastName, encryptedUsers[i].lastName);
+        })
+      );
+    });
   });
 });
