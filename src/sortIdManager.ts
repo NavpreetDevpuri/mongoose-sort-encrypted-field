@@ -173,5 +173,5 @@ class SortIdManager {
     }
   }
 }
-
+export default SortIdManager
 export { SortIdManager };

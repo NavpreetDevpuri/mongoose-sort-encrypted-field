@@ -1,7 +1,6 @@
 const assert = require("assert");
 const generateName = require("project-name-generator");
 const { getModelsQueue } = require("../lib/modelsQueue");
-const fs = require("fs");
 const { initiateRedisMemoryServer, connectMongoose, stopDatabases } = require("./utils/databases");
 
 describe("mongoose-sort-encrypted-field tests", async function () {
@@ -44,10 +43,10 @@ describe("mongoose-sort-encrypted-field tests", async function () {
       await unencryptedUserModel.deleteMany({}).exec();
       await encryptedUserModel.deleteMany({}).exec();
 
-      for (const user of users) {
+      await Promise.all(users.map(async (user) => {
         await unencryptedUserModel.createUser(user);
         await encryptedUserModel.createUser(user);
-      }
+      }));
       assert.equal(await unencryptedUserModel.find({}).count().exec(), users.length);
       assert.equal(await encryptedUserModel.find({}).count().exec(), users.length);
     });
@@ -143,9 +142,7 @@ describe("mongoose-sort-encrypted-field tests", async function () {
     it("Sorting check for { firstName: 1, middleName: 1, lastName: 1 } after inserting users in sorted order to reach saturation", async function () {
       const unencryptedUsers = await unencryptedUserModel.find({}).sort({ firstName: 1, middleName: 1, lastName: 1 }).lean().exec();
       await encryptedUserModel.deleteMany({}).exec();
-      for (const user of unencryptedUsers) {
-        await encryptedUserModel.createUser(user);
-      }
+      await Promise.all(unencryptedUsers.map((user) => encryptedUserModel.createUser(user)));
       if (!silent) {
         console.log("Waiting for sort ID to be generated...");
       }
