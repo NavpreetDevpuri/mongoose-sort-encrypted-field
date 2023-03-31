@@ -1,6 +1,6 @@
 const { RedisMemoryServer } = require("redis-memory-server");
 const { MongoMemoryServer } = require("mongodb-memory-server");
-const Redis = require("ioredis");
+const { Redis } = require("redis-ordered-queue");
 const mongoose = require("mongoose");
 
 const redisServer = new RedisMemoryServer();

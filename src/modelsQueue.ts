@@ -1,5 +1,4 @@
-import { RedisQueueClient } from "redis-ordered-queue";
-import Redis from "ioredis";
+import { RedisQueueClient, Redis } from "redis-ordered-queue";
 
 import { REDIS_QUEUE_CLIENT_OPTIONS } from "./constants";
 import { SortIdManager } from "./sortIdManager";
