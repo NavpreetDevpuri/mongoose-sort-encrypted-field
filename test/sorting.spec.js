@@ -57,7 +57,9 @@ describe("mongoose-sort-encrypted-field tests", async function () {
       let pendingJobsCount = -1;
       while (pendingJobsCount !== 0) {
         pendingJobsCount = await modelsQueue.getPendingJobsCount();
-        await new Promise((r) => setTimeout(r, 1000));
+        await new Promise((r) => {
+          setTimeout(r, 1000);
+        });
       }
       const unencryptedUsers = await unencryptedUserModel.find({}).sort({ firstName: 1 }).lean().exec();
       const encryptedUsers = await encryptedUserModel.find({}).sort({ firstNameSort: 1 }).lean().exec();
@@ -151,7 +153,9 @@ describe("mongoose-sort-encrypted-field tests", async function () {
         pendingUsers = await encryptedUserModel
           .find({ $or: [{ firstNameSort: null }, { middleNameSort: null }, { lastNameSort: null }] })
           .count();
-        await new Promise((r) => setTimeout(r, 1000));
+          await new Promise((r) => {
+            setTimeout(r, 1000);
+          });
       }
 
       const encryptedUsers = await encryptedUserModel.find({}).sort({ firstNameSort: 1, middleNameSort: 1, lastNameSort: 1 }).lean().exec();
