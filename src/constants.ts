@@ -12,8 +12,8 @@ const PLUGIN_OPTIONS: PluginOptions = {
   ignoreCases: false,
   silent: false,
   selectSortFields: false,
-  noOfBytesForSortId: 50,
-  noOfBytesToIncreaseOnSaturation: 2,
+  noOfCharsForSortId: 50,
+  noOfCharsToIncreaseOnSaturation: 2,
   revaluateAllThreshold: 0.5,
   revaluateAllCountThreshold: 100,
 };

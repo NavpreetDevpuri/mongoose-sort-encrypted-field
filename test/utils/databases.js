@@ -12,15 +12,12 @@ async function initiateRedisMemoryServer() {
   const host = await redisServer.getHost();
   const port = await redisServer.getPort();
   redis = new Redis({ host, port });
-  await redis.call('flushall');
-  console.log("Redis is connected", { host, port });
 }
 
 async function connectMongoose() {
   await mongod.start();
   const uri = await mongod.getUri();
   await mongoose.connect(uri);
-  console.log("Mongoose is connected", { uri });
 }
 
 async function stopDatabases() {

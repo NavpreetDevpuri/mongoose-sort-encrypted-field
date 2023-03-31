@@ -21,7 +21,7 @@ function sortEncryptedFields(schema: mongoose.Schema, pluginOptions: PluginOptio
     if (!decrypters[fieldName]) decrypters[fieldName] = field.options.get;
     schema.add({
       [field.options.sortFieldName]: {
-        type: Buffer,
+        type: String,
         default: null,
         select: selectSortFields,
       },

@@ -12,8 +12,8 @@ interface PluginOptions {
   ignoreCases?: boolean;
   silent?: boolean;
   selectSortFields?: boolean;
-  noOfBytesForSortId?: number;
-  noOfBytesToIncreaseOnSaturation?: number;
+  noOfCharsForSortId?: number;
+  noOfCharsToIncreaseOnSaturation?: number;
   revaluateAllThreshold?: number;
   revaluateAllCountThreshold?: number;
 }
