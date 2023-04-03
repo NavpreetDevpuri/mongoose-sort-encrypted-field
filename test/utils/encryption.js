@@ -5,7 +5,6 @@ const key = crypto.randomBytes(32);
 const iv = crypto.randomBytes(16);
 
 function decrypt(encrypted) {
-  return encrypted;
   const decipher = crypto.createDecipheriv(algorithm, key, iv);
   let decrypted = decipher.update(encrypted, "hex", "utf8");
   decrypted += decipher.final("utf8");
@@ -13,7 +12,6 @@ function decrypt(encrypted) {
 };
 
 function encrypt(plain) {
-  return plain;
   const cipher = crypto.createCipheriv(algorithm, key, iv);
   let encrypted = cipher.update(plain, "utf8", "hex");
   encrypted += cipher.final("hex");
